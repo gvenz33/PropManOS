@@ -1,0 +1,80 @@
+import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
+
+export default async function OwnerHomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { count: propCount } = await supabase
+    .from("properties")
+    .select("*", { count: "exact", head: true })
+    .eq("owner_id", user.id);
+
+  const { data: props } = await supabase.from("properties").select("id").eq("owner_id", user.id);
+  const propIds = (props ?? []).map((p) => p.id);
+  let unitCount = 0;
+  let openInvoices = 0;
+  if (propIds.length) {
+    const { count: u } = await supabase
+      .from("units")
+      .select("*", { count: "exact", head: true })
+      .in("property_id", propIds);
+    unitCount = u ?? 0;
+    const { data: units } = await supabase.from("units").select("id").in("property_id", propIds);
+    const unitIds = (units ?? []).map((x) => x.id);
+    if (unitIds.length) {
+      const { data: leases } = await supabase.from("leases").select("id").in("unit_id", unitIds);
+      const leaseIds = (leases ?? []).map((l) => l.id);
+      if (leaseIds.length) {
+        const { count: inv } = await supabase
+          .from("invoices")
+          .select("*", { count: "exact", head: true })
+          .in("lease_id", leaseIds)
+          .in("status", ["open", "late"]);
+        openInvoices = inv ?? 0;
+      }
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
+        <p className="mt-1 text-[var(--muted)]">
+          Your portfolio at a glance. Use the nav to manage units, rent, and CRM
+          follow-ups.
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: "Properties", value: propCount ?? 0, href: "/dashboard/owner/properties" },
+          { label: "Units", value: unitCount, href: "/dashboard/owner/properties" },
+          { label: "Open / late invoices", value: openInvoices, href: "/dashboard/owner/invoices" },
+        ].map((c) => (
+          <Link
+            key={c.label}
+            href={c.href}
+            className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm transition hover:border-[var(--accent)]"
+          >
+            <p className="text-sm text-[var(--muted)]">{c.label}</p>
+            <p className="mt-2 text-3xl font-bold tabular-nums">{c.value}</p>
+          </Link>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--accent-dim)]/30 p-6">
+        <h2 className="font-semibold text-[var(--foreground)]">Reminders</h2>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Configure a daily Vercel Cron job to hit{" "}
+          <code className="rounded bg-[var(--muted-bg)] px-1">/api/cron/reminders</code> with your{" "}
+          <code className="rounded bg-[var(--muted-bg)] px-1">CRON_SECRET</code>. Wire Resend and
+          Twilio using the env vars in{" "}
+          <code className="rounded bg-[var(--muted-bg)] px-1">.env.example</code> to send
+          &quot;due in 3 days&quot;, &quot;due today&quot;, and &quot;late&quot; messages.
+        </p>
+      </div>
+    </div>
+  );
+}
