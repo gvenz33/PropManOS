@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Tenant FAQ | Prop Man OS",
+  title: "Tenant FAQ",
   description: "How to pay rent, connect your bank, and use your tenant portal.",
 };
 
 const items = [
   {
     q: "How do I pay rent?",
-    a: "Sign in to your Prop Man OS tenant dashboard. Open Invoices to see what is due. Your landlord can enable card or ACH depending on their processor — follow the Pay button when it appears. Until payments are connected, use the instructions your landlord shared (check, ACH, or portal transfer).",
+    a: `Sign in to your ${BRAND.name} tenant dashboard. Open Invoices to see what is due. Your landlord can enable card or ACH depending on their processor — follow the Pay button when it appears. Until payments are connected, use the instructions your landlord shared (check, ACH, or portal transfer).`,
   },
   {
     q: "How do I link my bank account?",
-    a: "When your landlord turns on bank linking (Plaid or similar), you will see a secure prompt inside the dashboard to connect your account. Prop Man OS never stores your bank password — only tokens from the provider.",
+    a: `When your landlord turns on bank linking (Plaid or similar), you will see a secure prompt inside the dashboard to connect your account. ${BRAND.name} never stores your bank password — only tokens from the provider.`,
   },
   {
     q: "When will I get reminders?",

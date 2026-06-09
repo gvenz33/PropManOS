@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-logo";
 import Link from "next/link";
 import { SignUpForm } from "./ui";
 
@@ -9,8 +10,10 @@ export default async function SignUpPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-4 py-16">
-      <p className="text-center text-sm font-semibold text-[var(--accent)]">Prop Man OS</p>
-      <h1 className="mt-2 text-center text-2xl font-bold">Create your account</h1>
+      <div className="flex justify-center">
+        <BrandLogo variant="icon" href="/" />
+      </div>
+      <h1 className="mt-4 text-center text-2xl font-bold">Create your account</h1>
       <p className="mt-2 text-center text-sm text-[var(--muted)]">
         Use the same email your landlord invited you with so leases connect automatically.
       </p>

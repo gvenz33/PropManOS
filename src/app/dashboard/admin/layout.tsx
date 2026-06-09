@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-logo";
 import { BRAND } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -5,13 +6,11 @@ import { redirect } from "next/navigation";
 import { signOutAction } from "../actions";
 
 const links = [
-  { href: "/dashboard/tenant", label: "Home" },
-  { href: "/dashboard/tenant/invoices", label: "Invoices" },
-  { href: "/dashboard/tenant/documents", label: "Documents" },
-  { href: "/dashboard/tenant/faq", label: "Tenant FAQ" },
+  { href: "/dashboard/admin", label: "Overview" },
+  { href: "/dashboard/admin/subscribers", label: "Subscribers" },
 ];
 
-export default async function TenantLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -28,21 +27,23 @@ export default async function TenantLayout({
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profile?.role === "admin") redirect("/dashboard/admin");
-  if (profile?.role === "owner") redirect("/dashboard/owner");
+  if (profile?.role !== "admin") redirect("/dashboard");
 
   return (
     <div className="min-h-full bg-[var(--background)]">
       <div className="border-b border-[var(--border)] bg-[var(--card)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-              {BRAND.name}
-            </p>
-            <p className="font-semibold text-[var(--foreground)]">
-              {profile?.full_name || user.email}
-            </p>
-            <p className="text-xs text-[var(--muted)]">Tenant portal</p>
+          <div className="flex items-center gap-4">
+            <BrandLogo variant="icon" href="/dashboard/admin" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
+                {BRAND.name} admin
+              </p>
+              <p className="font-semibold text-[var(--foreground)]">
+                {profile.full_name || user.email}
+              </p>
+              <p className="text-xs text-[var(--muted)]">Site administration console</p>
+            </div>
           </div>
           <form action={signOutAction}>
             <button
@@ -63,12 +64,6 @@ export default async function TenantLayout({
               {l.label}
             </Link>
           ))}
-          <Link
-            href="/faq/tenants"
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--muted-bg)] hover:text-[var(--foreground)]"
-          >
-            Public FAQ
-          </Link>
         </nav>
       </div>
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>

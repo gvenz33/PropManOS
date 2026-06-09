@@ -1,3 +1,4 @@
+import { dashboardPathForRole } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -14,6 +15,5 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profile?.role === "owner") redirect("/dashboard/owner");
-  redirect("/dashboard/tenant");
+  redirect(dashboardPathForRole(profile?.role));
 }

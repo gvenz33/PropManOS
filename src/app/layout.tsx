@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,11 +15,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Prop Man OS — Property Management Operating System",
-    template: "%s | Prop Man OS",
+    default: `${BRAND.name} — ${BRAND.tagline}`,
+    template: `%s | ${BRAND.name}`,
   },
-  description:
-    "Collect rent, notify tenants, track late fees, and manage properties in one mobile-friendly platform.",
+  description: BRAND.description,
+  icons: {
+    icon: BRAND.icon,
+    apple: BRAND.icon,
+  },
 };
 
 export default function RootLayout({

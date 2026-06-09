@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 import Link from "next/link";
 
 const items = [
@@ -11,7 +12,7 @@ const items = [
   },
   {
     q: "How are tenants invited?",
-    a: "Create a lease with the tenant’s email. When they sign up with the same email, Prop Man OS links the lease automatically so they only see their unit, invoices, and documents.",
+    a: `Create a lease with the tenant’s email. When they sign up with the same email, ${BRAND.name} links the lease automatically so they only see their unit, invoices, and documents.`,
   },
   {
     q: "How do I waive a late fee?",
@@ -29,7 +30,7 @@ export default function OwnerFaqPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Landlord & PM FAQ</h1>
         <p className="mt-1 text-[var(--muted)]">
-          Logged-in help for operating Prop Man OS day to day. Tenants see a separate FAQ in
+          Logged-in help for operating {BRAND.name} day to day. Tenants see a separate FAQ in
           their portal and on the public site.
         </p>
       </div>

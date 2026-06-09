@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-logo";
 import Link from "next/link";
 import { LoginForm } from "./ui";
 
@@ -21,8 +22,10 @@ export default async function LoginPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-4 py-16">
-      <p className="text-center text-sm font-semibold text-[var(--accent)]">Prop Man OS</p>
-      <h1 className="mt-2 text-center text-2xl font-bold">Sign in</h1>
+      <div className="flex justify-center">
+        <BrandLogo variant="icon" href="/" />
+      </div>
+      <h1 className="mt-4 text-center text-2xl font-bold">Sign in</h1>
       {sp.error ? (
         <p className="mt-2 text-center text-sm text-[var(--danger)]">
           Something went wrong. Try again or reset your password.

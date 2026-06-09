@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -29,6 +30,7 @@ export default async function OwnerLayout({
     .eq("id", user.id)
     .maybeSingle();
 
+  if (profile?.role === "admin") redirect("/dashboard/admin");
   if (profile?.role !== "owner") redirect("/dashboard/tenant");
 
   return (
@@ -37,7 +39,7 @@ export default async function OwnerLayout({
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-              Prop Man OS
+              {BRAND.name}
             </p>
             <p className="font-semibold text-[var(--foreground)]">
               {profile.full_name || user.email}
