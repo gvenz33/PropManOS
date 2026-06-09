@@ -1,10 +1,10 @@
 import { ActionMessage } from "@/components/action-message";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { DocumentList } from "@/components/document-list";
-import { DocumentUpload, kindOptionsFrom } from "@/components/document-upload";
+import { DocumentUpload } from "@/components/document-upload";
 import { RentalFormList } from "@/components/rental-form-list";
 import type { FormRecipient } from "@/components/send-rental-form";
-import { INTERNAL_DOCUMENT_KINDS, RENTAL_FORM_KINDS } from "@/lib/documents";
+import { INTERNAL_DOCUMENT_KINDS, RENTAL_FORM_KINDS, kindOptionsFrom } from "@/lib/documents";
 import { formatCentsAsDollars } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";

@@ -1,8 +1,8 @@
 import { ActionMessage } from "@/components/action-message";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { DocumentList } from "@/components/document-list";
-import { DocumentUpload, kindOptionsFrom } from "@/components/document-upload";
-import { PROFILE_DOCUMENT_KINDS } from "@/lib/documents";
+import { DocumentUpload } from "@/components/document-upload";
+import { PROFILE_DOCUMENT_KINDS, kindOptionsFrom } from "@/lib/documents";
 import { displayTenantName, displayTenantPhone, type LeaseRow } from "@/lib/leases";
 import { formatCentsAsDollars } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";

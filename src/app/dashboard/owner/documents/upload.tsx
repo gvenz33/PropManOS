@@ -1,7 +1,7 @@
 "use client";
 
-import { DocumentUpload, kindOptionsFrom } from "@/components/document-upload";
-import { INTERNAL_DOCUMENT_KINDS, RENTAL_FORM_KINDS } from "@/lib/documents";
+import { DocumentUpload } from "@/components/document-upload";
+import { INTERNAL_DOCUMENT_KINDS, RENTAL_FORM_KINDS, kindOptionsFrom } from "@/lib/documents";
 
 export function OwnerInternalUpload() {
   return (

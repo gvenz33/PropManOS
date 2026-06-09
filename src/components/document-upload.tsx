@@ -1,11 +1,11 @@
 "use client";
 
-import { documentKindLabel, type DocumentCategory, type DocumentKind } from "@/lib/documents";
+import { registerDocument } from "@/app/dashboard/actions";
+import type { DocumentCategory, DocumentKind } from "@/lib/documents";
 import { createClient } from "@/lib/supabase/client";
 import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { registerDocument } from "@/app/dashboard/actions";
 
 type KindOption = { value: DocumentKind; label: string };
 
@@ -134,8 +134,4 @@ export function DocumentUpload({
       </form>
     </section>
   );
-}
-
-export function kindOptionsFrom(values: DocumentKind[]): KindOption[] {
-  return values.map((value) => ({ value, label: documentKindLabel(value) }));
 }

@@ -53,3 +53,7 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
 export function documentKindLabel(kind: string): string {
   return DOCUMENT_KIND_LABELS[kind as DocumentKind] ?? kind;
 }
+
+export function kindOptionsFrom(values: DocumentKind[]) {
+  return values.map((value) => ({ value, label: documentKindLabel(value) }));
+}
