@@ -14,9 +14,12 @@ function propertiesPath(query?: string) {
   return `/dashboard/owner/properties${query ? `?${query}` : ""}`;
 }
 
-function propertyPath(propertyId: string, query?: string) {
-  return `/dashboard/owner/properties/${propertyId}${query ? `?${query}` : ""}`;
+function propertyPath(propertyId: string, query?: string, anchor = "") {
+  const base = `/dashboard/owner/properties/${propertyId}${query ? `?${query}` : ""}`;
+  return anchor ? `${base}#${anchor}` : base;
 }
+
+const unitsSection = "units-tenants";
 
 export async function signOutAction() {
   const supabase = await createClient();
@@ -54,7 +57,7 @@ export async function createProperty(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/dashboard/owner/properties");
-  redirect(propertyPath(data.id, "success=property"));
+  redirect(propertyPath(data.id, "success=property", unitsSection));
 }
 
 export async function updateProperty(formData: FormData): Promise<void> {
@@ -121,7 +124,7 @@ export async function createUnit(formData: FormData): Promise<void> {
     redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
   }
   revalidatePath(propertyPath(propertyId));
-  redirect(propertyPath(propertyId, "success=unit"));
+  redirect(propertyPath(propertyId, "success=unit", unitsSection));
 }
 
 export async function updateUnitPayments(formData: FormData): Promise<void> {
@@ -145,7 +148,7 @@ export async function updateUnitPayments(formData: FormData): Promise<void> {
     redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
   }
   revalidatePath(propertyPath(propertyId));
-  redirect(propertyPath(propertyId, "success=payments"));
+  redirect(propertyPath(propertyId, "success=payments", unitsSection));
 }
 
 export async function updateTenantNotifications(formData: FormData): Promise<void> {
@@ -206,7 +209,7 @@ export async function createLease(formData: FormData): Promise<void> {
     redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
   }
   revalidatePath(propertyPath(propertyId));
-  redirect(propertyPath(propertyId, "success=lease"));
+  redirect(propertyPath(propertyId, "success=lease", unitsSection));
 }
 
 export async function updateLease(formData: FormData): Promise<void> {
@@ -247,7 +250,7 @@ export async function updateLease(formData: FormData): Promise<void> {
     redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
   }
   revalidatePath(propertyPath(propertyId));
-  redirect(propertyPath(propertyId, "success=lease-updated"));
+  redirect(propertyPath(propertyId, "success=lease-updated", unitsSection));
 }
 
 export async function endLease(formData: FormData): Promise<void> {
@@ -270,7 +273,7 @@ export async function endLease(formData: FormData): Promise<void> {
     redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
   }
   revalidatePath(propertyPath(propertyId));
-  redirect(propertyPath(propertyId, "success=lease-ended"));
+  redirect(propertyPath(propertyId, "success=lease-ended", unitsSection));
 }
 
 export async function removeTenantFromUnit(formData: FormData): Promise<void> {
@@ -306,7 +309,7 @@ export async function removeTenantFromUnit(formData: FormData): Promise<void> {
     redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
   }
   revalidatePath(propertyPath(propertyId));
-  redirect(propertyPath(propertyId, "success=tenant-removed"));
+  redirect(propertyPath(propertyId, "success=tenant-removed", unitsSection));
 }
 
 export async function generateMonthlyInvoicesForm() {

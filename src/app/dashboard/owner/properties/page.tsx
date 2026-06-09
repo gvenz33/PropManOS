@@ -106,7 +106,7 @@ export default async function OwnerPropertiesPage({
           return (
             <li key={p.id}>
               <Link
-                href={`/dashboard/owner/properties/${p.id}`}
+                href={`/dashboard/owner/properties/${p.id}#units-tenants`}
                 className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4 shadow-sm transition hover:border-[var(--accent)]"
               >
                 <div>

@@ -207,53 +207,16 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
         </form>
       </section>
 
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Internal files</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Private landlord records for this property — insurance, permits, notes, and other files
-          tenants never see.
-        </p>
-        <div className="mt-4">
-          <DocumentList
-            docs={(internalDocs ?? []) as PropertyDoc[]}
-            emptyMessage="No internal files yet."
-          />
+      <section id="units-tenants" className="scroll-mt-8 space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold">Units & tenants</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Add rental units, assign tenants, and manage leases for this property.
+          </p>
         </div>
-        <DocumentUpload
-          propertyId={id}
-          category="internal"
-          title="Upload internal file"
-          kindOptions={kindOptionsFrom(INTERNAL_DOCUMENT_KINDS)}
-          compact
-        />
-      </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Rental forms</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Keep applications, agreements, and other forms on file, then send them to prospects or
-          active tenants by email or text. Recipients get a download link — nothing is posted to
-          the tenant portal.
-        </p>
-        <div className="mt-4">
-          <RentalFormList
-            forms={(rentalForms ?? []) as PropertyDoc[]}
-            propertyId={id}
-            recipients={formRecipients}
-          />
-        </div>
-        <DocumentUpload
-          propertyId={id}
-          category="rental_form"
-          defaultKind="rental_application"
-          title="Upload rental form"
-          kindOptions={kindOptionsFrom(RENTAL_FORM_KINDS)}
-          compact
-        />
-      </section>
-
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Add unit</h2>
+        <h3 className="text-lg font-semibold">Add unit</h3>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Each apartment, suite, or rental space gets its own unit. Set rent and due date here.
         </p>
@@ -622,6 +585,52 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
           </p>
         ) : null}
       </div>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Internal files</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Private landlord records for this property — insurance, permits, notes, and other files
+          tenants never see.
+        </p>
+        <div className="mt-4">
+          <DocumentList
+            docs={(internalDocs ?? []) as PropertyDoc[]}
+            emptyMessage="No internal files yet."
+          />
+        </div>
+        <DocumentUpload
+          propertyId={id}
+          category="internal"
+          title="Upload internal file"
+          kindOptions={kindOptionsFrom(INTERNAL_DOCUMENT_KINDS)}
+          compact
+        />
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Rental forms</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Keep applications, agreements, and other forms on file, then send them to prospects or
+          active tenants by email or text. Recipients get a download link — nothing is posted to
+          the tenant portal.
+        </p>
+        <div className="mt-4">
+          <RentalFormList
+            forms={(rentalForms ?? []) as PropertyDoc[]}
+            propertyId={id}
+            recipients={formRecipients}
+          />
+        </div>
+        <DocumentUpload
+          propertyId={id}
+          category="rental_form"
+          defaultKind="rental_application"
+          title="Upload rental form"
+          kindOptions={kindOptionsFrom(RENTAL_FORM_KINDS)}
+          compact
+        />
+      </section>
     </div>
   );
 }
