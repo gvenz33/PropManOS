@@ -1,3 +1,4 @@
+import { DocumentList } from "@/components/document-list";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -25,26 +26,10 @@ export default async function TenantDocumentsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
         <p className="mt-1 text-[var(--muted)]">
-          Files your landlord shared for your lease. Download links can be added via a signed-URL
-          API route.
+          Files your landlord shared for your lease — applications, agreements, notices, and more.
         </p>
       </div>
-      <ul className="space-y-3">
-        {(docs ?? []).map((d) => (
-          <li
-            key={d.id}
-            className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm"
-          >
-            <p className="font-medium">{d.filename}</p>
-            <p className="text-sm text-[var(--muted)]">
-              {d.kind} · {new Date(d.created_at).toLocaleString()}
-            </p>
-          </li>
-        ))}
-      </ul>
-      {docs?.length === 0 ? (
-        <p className="text-[var(--muted)]">No documents linked to your leases yet.</p>
-      ) : null}
+      <DocumentList docs={docs ?? []} emptyMessage="No documents linked to your leases yet." />
     </div>
   );
 }

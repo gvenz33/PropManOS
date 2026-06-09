@@ -509,6 +509,7 @@ export async function createCrmActivity(formData: FormData): Promise<void> {
 }
 
 export async function registerDocument(params: {
+  propertyId: string | null;
   leaseId: string | null;
   unitId: string | null;
   storagePath: string;
@@ -520,9 +521,40 @@ export async function registerDocument(params: {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Unauthorized" };
+
+  let propertyId = params.propertyId;
+  if (params.leaseId) {
+    const { data: lease } = await supabase
+      .from("leases")
+      .select("id, units(property_id)")
+      .eq("id", params.leaseId)
+      .maybeSingle();
+    const unit = lease?.units as { property_id: string } | { property_id: string }[] | null;
+    const unitRow = Array.isArray(unit) ? unit[0] : unit;
+    if (!unitRow?.property_id) return { error: "Lease not found." };
+
+    const { data: ownedProperty } = await supabase
+      .from("properties")
+      .select("id")
+      .eq("id", unitRow.property_id)
+      .eq("owner_id", user.id)
+      .maybeSingle();
+    if (!ownedProperty) return { error: "Lease not found." };
+    propertyId = propertyId ?? unitRow.property_id;
+  } else if (propertyId) {
+    const { data: property } = await supabase
+      .from("properties")
+      .select("id")
+      .eq("id", propertyId)
+      .eq("owner_id", user.id)
+      .maybeSingle();
+    if (!property) return { error: "Property not found." };
+  }
+
   const { error } = await supabase.from("documents").insert({
     owner_id: user.id,
     uploaded_by: user.id,
+    property_id: propertyId,
     lease_id: params.leaseId,
     unit_id: params.unitId,
     storage_path: params.storagePath,
@@ -531,5 +563,6 @@ export async function registerDocument(params: {
   });
   if (error) return { error: error.message };
   revalidatePath("/dashboard/owner/documents");
+  if (propertyId) revalidatePath(propertyPath(propertyId));
   return { ok: true };
 }

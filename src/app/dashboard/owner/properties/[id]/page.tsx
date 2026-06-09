@@ -1,5 +1,8 @@
 import { ActionMessage } from "@/components/action-message";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { DocumentList } from "@/components/document-list";
+import { DocumentUpload, kindOptionsFrom } from "@/components/document-upload";
+import { PROPERTY_DOCUMENT_KINDS, TENANT_DOCUMENT_KINDS } from "@/lib/documents";
 import { formatCentsAsDollars } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -86,6 +89,40 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
 
   const unitRows = (units ?? []) as UnitRow[];
 
+  type PropertyDoc = {
+    id: string;
+    filename: string;
+    kind: string;
+    created_at: string;
+    lease_id: string | null;
+    property_id: string | null;
+  };
+
+  const leaseIds = unitRows.flatMap((u) => (u.leases ?? []).map((l) => l.id));
+  const { data: leaseDocs } =
+    leaseIds.length > 0
+      ? await supabase
+          .from("documents")
+          .select("id, filename, kind, created_at, lease_id, property_id")
+          .in("lease_id", leaseIds)
+          .order("created_at", { ascending: false })
+      : { data: [] as PropertyDoc[] };
+  const { data: propertyOnlyDocs } = await supabase
+    .from("documents")
+    .select("id, filename, kind, created_at, lease_id, property_id")
+    .eq("property_id", id)
+    .is("lease_id", null)
+    .order("created_at", { ascending: false });
+
+  const docsByLease = new Map<string, PropertyDoc[]>();
+  for (const doc of leaseDocs ?? []) {
+    if (!doc.lease_id) continue;
+    const list = docsByLease.get(doc.lease_id) ?? [];
+    list.push(doc);
+    docsByLease.set(doc.lease_id, list);
+  }
+  const propertyLevelDocs = propertyOnlyDocs ?? [];
+
   return (
     <div className="space-y-10">
       <div>
@@ -154,6 +191,26 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
             </button>
           </div>
         </form>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Property files</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Building-level documents such as insurance, permits, or portfolio notices.
+        </p>
+        <div className="mt-4">
+          <DocumentList
+            docs={propertyLevelDocs}
+            emptyMessage="No property files uploaded yet."
+          />
+        </div>
+        <DocumentUpload
+          propertyId={id}
+          hideLeasePicker
+          title="Upload property file"
+          kindOptions={kindOptionsFrom(PROPERTY_DOCUMENT_KINDS)}
+          compact
+        />
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
@@ -431,6 +488,29 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
                             </ConfirmSubmitButton>
                           </div>
                         </form>
+                        <div className="mt-4 border-t border-[var(--border)] pt-4">
+                          <h5 className="text-sm font-semibold">Tenant documents</h5>
+                          <p className="mt-1 text-xs text-[var(--muted)]">
+                            Rental applications, agreements, and other files for this tenant. They
+                            can download these from their portal.
+                          </p>
+                          <div className="mt-3">
+                            <DocumentList
+                              docs={docsByLease.get(l.id) ?? []}
+                              emptyMessage="No tenant documents yet."
+                            />
+                          </div>
+                          <DocumentUpload
+                            propertyId={id}
+                            leaseId={l.id}
+                            unitId={u.id}
+                            hideLeasePicker
+                            compact
+                            title="Upload tenant file"
+                            defaultKind="rental_application"
+                            kindOptions={kindOptionsFrom(TENANT_DOCUMENT_KINDS)}
+                          />
+                        </div>
                       </li>
                     );
                   })}
