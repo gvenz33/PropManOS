@@ -11,22 +11,16 @@ type KindOption = { value: DocumentKind; label: string };
 
 export function DocumentUpload({
   propertyId,
-  leaseId,
-  unitId,
+  category = "internal",
   kindOptions,
   defaultKind,
-  hideLeasePicker = false,
-  leaseOptions = [],
   compact = false,
   title = "Upload document",
 }: {
   propertyId?: string;
-  leaseId?: string;
-  unitId?: string;
+  category?: DocumentCategory;
   kindOptions: KindOption[];
   defaultKind?: DocumentKind;
-  hideLeasePicker?: boolean;
-  leaseOptions?: { id: string; label: string }[];
   compact?: boolean;
   title?: string;
 }) {
