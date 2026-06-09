@@ -108,13 +108,62 @@ export async function createUnit(formData: FormData): Promise<void> {
     due_day_of_month: Math.min(28, Math.max(1, dueDay)),
     late_fee_cents: Math.max(0, lateFee),
     grace_days: Math.max(0, Math.round(grace)),
-    bank_connection_note: String(formData.get("bank_connection_note") ?? "").trim() || null,
+    zelle_handle: String(formData.get("zelle_handle") ?? "").trim() || null,
+    cashapp_handle: String(formData.get("cashapp_handle") ?? "").trim() || null,
+    payment_instructions: String(formData.get("payment_instructions") ?? "").trim() || null,
   });
   if (error) {
     redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
   }
   revalidatePath(propertyPath(propertyId));
   redirect(propertyPath(propertyId, "success=unit"));
+}
+
+export async function updateUnitPayments(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const unitId = String(formData.get("unit_id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!unitId || !propertyId) {
+    redirect(propertiesPath(`error=${encodeURIComponent("Missing unit information.")}`));
+  }
+
+  const { error } = await supabase
+    .from("units")
+    .update({
+      zelle_handle: String(formData.get("zelle_handle") ?? "").trim() || null,
+      cashapp_handle: String(formData.get("cashapp_handle") ?? "").trim() || null,
+      payment_instructions: String(formData.get("payment_instructions") ?? "").trim() || null,
+    })
+    .eq("id", unitId);
+
+  if (error) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
+  }
+  revalidatePath(propertyPath(propertyId));
+  redirect(propertyPath(propertyId, "success=payments"));
+}
+
+export async function updateTenantNotifications(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      phone: String(formData.get("phone") ?? "").trim() || null,
+      notify_email: formData.has("notify_email"),
+      notify_sms: formData.has("notify_sms"),
+    })
+    .eq("id", user.id);
+
+  if (error) {
+    redirect(`/dashboard/tenant/settings?error=${encodeURIComponent(error.message)}`);
+  }
+  revalidatePath("/dashboard/tenant/settings");
+  redirect("/dashboard/tenant/settings?success=settings");
 }
 
 export async function createLease(formData: FormData): Promise<void> {

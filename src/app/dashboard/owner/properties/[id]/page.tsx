@@ -3,7 +3,7 @@ import { formatCentsAsDollars } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createLease, createUnit, endLease, updateProperty } from "../../../actions";
+import { createLease, createUnit, endLease, updateProperty, updateUnitPayments } from "../../../actions";
 
 type LeaseRow = {
   id: string;
@@ -21,7 +21,9 @@ type UnitRow = {
   rent_amount_cents: number;
   due_day_of_month: number;
   late_fee_cents: number;
-  bank_connection_note: string | null;
+  zelle_handle: string | null;
+  cashapp_handle: string | null;
+  payment_instructions: string | null;
   leases: LeaseRow[] | null;
 };
 
@@ -56,7 +58,7 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
   const { data: units } = await supabase
     .from("units")
     .select(
-      "id, label, rent_amount_cents, due_day_of_month, late_fee_cents, bank_connection_note, leases(id, tenant_email, tenant_id, status, rent_amount_cents, start_date, profiles(full_name))",
+      "id, label, rent_amount_cents, due_day_of_month, late_fee_cents, zelle_handle, cashapp_handle, payment_instructions, leases(id, tenant_email, tenant_id, status, rent_amount_cents, start_date, profiles(full_name))",
     )
     .eq("property_id", id)
     .order("label");
@@ -191,11 +193,27 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
               className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
             />
           </div>
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium">Bank / payout note (optional)</label>
+          <div>
+            <label className="text-sm font-medium">Zelle (email or phone)</label>
             <input
-              name="bank_connection_note"
-              placeholder="Account nickname, last4, etc."
+              name="zelle_handle"
+              placeholder="you@email.com"
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Cash App ($Cashtag)</label>
+            <input
+              name="cashapp_handle"
+              placeholder="$YourCashtag"
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="text-sm font-medium">Payment notes (optional)</label>
+            <input
+              name="payment_instructions"
+              placeholder="Include unit number in the memo, etc."
               className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
             />
           </div>
@@ -227,11 +245,56 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
                     Rent {formatCentsAsDollars(u.rent_amount_cents)} · Due day {u.due_day_of_month}
                     {u.late_fee_cents ? ` · Late fee ${formatCentsAsDollars(u.late_fee_cents)}` : ""}
                   </p>
-                  {u.bank_connection_note ? (
-                    <p className="mt-2 text-xs text-[var(--muted)]">Bank: {u.bank_connection_note}</p>
-                  ) : null}
                 </div>
               </div>
+
+              <form
+                action={updateUnitPayments}
+                className="mt-4 grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-2"
+              >
+                <input type="hidden" name="unit_id" value={u.id} />
+                <input type="hidden" name="property_id" value={id} />
+                <div className="sm:col-span-2">
+                  <h4 className="text-sm font-semibold">Receive rent via Zelle or Cash App</h4>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    Tenants see these handles when paying open invoices.
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Zelle</label>
+                  <input
+                    name="zelle_handle"
+                    defaultValue={u.zelle_handle ?? ""}
+                    placeholder="you@email.com"
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Cash App</label>
+                  <input
+                    name="cashapp_handle"
+                    defaultValue={u.cashapp_handle ?? ""}
+                    placeholder="$YourCashtag"
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium">Payment notes</label>
+                  <input
+                    name="payment_instructions"
+                    defaultValue={u.payment_instructions ?? ""}
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--muted-bg)]"
+                  >
+                    Save payment methods
+                  </button>
+                </div>
+              </form>
 
               <div className="mt-4 border-t border-[var(--border)] pt-4">
                 <h4 className="text-sm font-semibold">Tenants on this unit</h4>

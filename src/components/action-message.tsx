@@ -9,6 +9,8 @@ const successCopy: Record<string, string> = {
   lease: "Tenant added to this unit.",
   "lease-ended": "Lease ended.",
   updated: "Property updated.",
+  payments: "Payment methods saved.",
+  settings: "Notification preferences saved.",
 };
 
 export function ActionMessage({ success, error }: Props) {

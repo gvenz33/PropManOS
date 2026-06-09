@@ -81,14 +81,13 @@ export default async function OwnerHomePage() {
         ))}
       </div>
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--accent-dim)]/30 p-6">
-        <h2 className="font-semibold text-[var(--foreground)]">Reminders</h2>
+        <h2 className="font-semibold text-[var(--foreground)]">Payments & reminders</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Configure a daily Vercel Cron job to hit{" "}
-          <code className="rounded bg-[var(--muted-bg)] px-1">/api/cron/reminders</code> with your{" "}
-          <code className="rounded bg-[var(--muted-bg)] px-1">CRON_SECRET</code>. Wire Resend and
-          Twilio using the env vars in{" "}
-          <code className="rounded bg-[var(--muted-bg)] px-1">.env.example</code> to send
-          &quot;due in 3 days&quot;, &quot;due today&quot;, and &quot;late&quot; messages.
+          Add Zelle and Cash App handles on each unit so tenants know how to pay. Tenants can opt
+          into email and text reminders from their notification settings. Set{" "}
+          <code className="rounded bg-[var(--muted-bg)] px-1">RESEND_API_KEY</code>, Twilio, and{" "}
+          <code className="rounded bg-[var(--muted-bg)] px-1">CRON_SECRET</code> on Vercel to enable
+          automated due-date notices.
         </p>
       </div>
     </div>
