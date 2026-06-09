@@ -190,6 +190,8 @@ export async function createLease(formData: FormData): Promise<void> {
   const { error } = await supabase.from("leases").insert({
     unit_id: unitId,
     tenant_email: tenantEmail,
+    tenant_name: String(formData.get("tenant_name") ?? "").trim() || null,
+    tenant_phone: String(formData.get("tenant_phone") ?? "").trim() || null,
     rent_amount_cents: rent,
     start_date: start,
     end_date: String(formData.get("end_date") ?? "").trim() || null,
@@ -200,6 +202,47 @@ export async function createLease(formData: FormData): Promise<void> {
   }
   revalidatePath(propertyPath(propertyId));
   redirect(propertyPath(propertyId, "success=lease"));
+}
+
+export async function updateLease(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const leaseId = String(formData.get("lease_id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  const tenantEmail = String(formData.get("tenant_email") ?? "").trim().toLowerCase();
+  const start = String(formData.get("start_date") ?? "");
+  const rent = parseDollarsToCents(formData.get("rent_amount_dollars"));
+
+  if (!leaseId || !propertyId) {
+    redirect(propertiesPath(`error=${encodeURIComponent("Missing lease information.")}`));
+  }
+  if (!tenantEmail) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent("Tenant email is required.")}`));
+  }
+  if (!start) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent("Lease start date is required.")}`));
+  }
+  if (rent === null || rent < 0) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent("Enter a valid rent amount.")}`));
+  }
+
+  const { error } = await supabase
+    .from("leases")
+    .update({
+      tenant_email: tenantEmail,
+      tenant_name: String(formData.get("tenant_name") ?? "").trim() || null,
+      tenant_phone: String(formData.get("tenant_phone") ?? "").trim() || null,
+      rent_amount_cents: rent,
+      start_date: start,
+      end_date: String(formData.get("end_date") ?? "").trim() || null,
+    })
+    .eq("id", leaseId)
+    .eq("status", "active");
+
+  if (error) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
+  }
+  revalidatePath(propertyPath(propertyId));
+  redirect(propertyPath(propertyId, "success=lease-updated"));
 }
 
 export async function endLease(formData: FormData): Promise<void> {

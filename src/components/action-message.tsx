@@ -7,6 +7,7 @@ const successCopy: Record<string, string> = {
   property: "Property saved.",
   unit: "Unit added.",
   lease: "Tenant added to this unit.",
+  "lease-updated": "Tenant information updated.",
   "lease-ended": "Lease ended.",
   updated: "Property updated.",
   payments: "Payment methods saved.",

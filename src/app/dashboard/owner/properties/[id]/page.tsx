@@ -3,16 +3,26 @@ import { formatCentsAsDollars } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createLease, createUnit, endLease, updateProperty, updateUnitPayments } from "../../../actions";
+import {
+  createLease,
+  createUnit,
+  endLease,
+  updateLease,
+  updateProperty,
+  updateUnitPayments,
+} from "../../../actions";
 
 type LeaseRow = {
   id: string;
   tenant_email: string;
+  tenant_name: string | null;
+  tenant_phone: string | null;
   tenant_id: string | null;
   status: string;
   rent_amount_cents: number;
   start_date: string;
-  profiles: { full_name: string } | { full_name: string }[] | null;
+  end_date: string | null;
+  profiles: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null;
 };
 
 type UnitRow = {
@@ -32,9 +42,18 @@ type Props = {
   searchParams: Promise<{ success?: string; error?: string }>;
 };
 
-function tenantName(lease: LeaseRow) {
-  const profile = Array.isArray(lease.profiles) ? lease.profiles[0] : lease.profiles;
-  return profile?.full_name?.trim() || null;
+function leaseProfile(lease: LeaseRow) {
+  return Array.isArray(lease.profiles) ? lease.profiles[0] : lease.profiles;
+}
+
+function displayTenantName(lease: LeaseRow) {
+  const profile = leaseProfile(lease);
+  return profile?.full_name?.trim() || lease.tenant_name?.trim() || null;
+}
+
+function displayTenantPhone(lease: LeaseRow) {
+  const profile = leaseProfile(lease);
+  return profile?.phone?.trim() || lease.tenant_phone?.trim() || "";
 }
 
 export default async function OwnerPropertyDetailPage({ params, searchParams }: Props) {
@@ -58,7 +77,7 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
   const { data: units } = await supabase
     .from("units")
     .select(
-      "id, label, rent_amount_cents, due_day_of_month, late_fee_cents, zelle_handle, cashapp_handle, payment_instructions, leases(id, tenant_email, tenant_id, status, rent_amount_cents, start_date, profiles(full_name))",
+      "id, label, rent_amount_cents, due_day_of_month, late_fee_cents, zelle_handle, cashapp_handle, payment_instructions, leases(id, tenant_email, tenant_name, tenant_phone, tenant_id, status, rent_amount_cents, start_date, end_date, profiles(full_name, phone))",
     )
     .eq("property_id", id)
     .order("label");
@@ -298,26 +317,20 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
 
               <div className="mt-4 border-t border-[var(--border)] pt-4">
                 <h4 className="text-sm font-semibold">Tenants on this unit</h4>
-                <ul className="mt-2 space-y-3 text-sm">
+                <ul className="mt-2 space-y-4 text-sm">
                   {activeLeases.map((l) => {
-                    const name = tenantName(l);
+                    const name = displayTenantName(l);
                     const linked = Boolean(l.tenant_id);
+                    const rentDefault = (l.rent_amount_cents / 100).toFixed(2);
                     return (
                       <li
                         key={l.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--muted-bg)]/40 px-3 py-2"
+                        className="rounded-lg border border-[var(--border)] bg-[var(--muted-bg)]/40 p-4"
                       >
-                        <div>
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                           <p className="font-medium text-[var(--foreground)]">
                             {name ?? l.tenant_email}
                           </p>
-                          <p className="text-[var(--muted)]">
-                            {name ? `${l.tenant_email} · ` : ""}
-                            {formatCentsAsDollars(l.rent_amount_cents)} · Started{" "}
-                            {new Date(`${l.start_date}T12:00:00`).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                               linked
@@ -327,17 +340,84 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
                           >
                             {linked ? "Portal connected" : "Awaiting signup"}
                           </span>
-                          <form action={endLease}>
-                            <input type="hidden" name="lease_id" value={l.id} />
-                            <input type="hidden" name="property_id" value={id} />
+                        </div>
+                        <form action={updateLease} className="grid gap-3 sm:grid-cols-2">
+                          <input type="hidden" name="lease_id" value={l.id} />
+                          <input type="hidden" name="property_id" value={id} />
+                          <div>
+                            <label className="text-sm font-medium">Tenant name</label>
+                            <input
+                              name="tenant_name"
+                              defaultValue={name ?? l.tenant_name ?? ""}
+                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Tenant email</label>
+                            <input
+                              name="tenant_email"
+                              type="email"
+                              required
+                              defaultValue={l.tenant_email}
+                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="text-sm font-medium">Tenant phone</label>
+                            <input
+                              name="tenant_phone"
+                              type="tel"
+                              defaultValue={displayTenantPhone(l)}
+                              placeholder="+1 555 123 4567"
+                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Monthly rent ($)</label>
+                            <input
+                              name="rent_amount_dollars"
+                              type="text"
+                              inputMode="decimal"
+                              required
+                              defaultValue={rentDefault}
+                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Lease start date</label>
+                            <input
+                              name="start_date"
+                              type="date"
+                              required
+                              defaultValue={l.start_date}
+                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Lease end date (optional)</label>
+                            <input
+                              name="end_date"
+                              type="date"
+                              defaultValue={l.end_date ?? ""}
+                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
                             <button
                               type="submit"
-                              className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs font-medium hover:bg-[var(--muted-bg)]"
+                              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
+                            >
+                              Save tenant
+                            </button>
+                            <button
+                              formAction={endLease}
+                              type="submit"
+                              className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--muted-bg)]"
                             >
                               End lease
                             </button>
-                          </form>
-                        </div>
+                          </div>
+                        </form>
                       </li>
                     );
                   })}
@@ -360,7 +440,15 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
                     connects automatically after they create an account.
                   </p>
                 </div>
-                <div className="sm:col-span-2">
+                <div>
+                  <label className="text-sm font-medium">Tenant name</label>
+                  <input
+                    name="tenant_name"
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                    placeholder="Jane Smith"
+                  />
+                </div>
+                <div>
                   <label className="text-sm font-medium">Tenant email</label>
                   <input
                     name="tenant_email"
@@ -368,6 +456,15 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
                     required
                     className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                     placeholder="tenant@email.com"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium">Tenant phone (optional)</label>
+                  <input
+                    name="tenant_phone"
+                    type="tel"
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                    placeholder="+1 555 123 4567"
                   />
                 </div>
                 <div>

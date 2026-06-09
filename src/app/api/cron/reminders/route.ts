@@ -52,7 +52,7 @@ async function runReminders() {
 
     const { data: lease } = await supabase
       .from("leases")
-      .select("id, tenant_id, tenant_email, unit_id")
+      .select("id, tenant_id, tenant_email, tenant_name, tenant_phone, unit_id")
       .eq("id", inv.lease_id)
       .maybeSingle();
 
@@ -78,7 +78,8 @@ async function runReminders() {
     const periodLabel = `${inv.period_year}-${String(inv.period_month).padStart(2, "0")}`;
     const message = buildReminderMessage({
       template,
-      tenantName: profile?.full_name?.trim() || lease.tenant_email,
+      tenantName:
+        profile?.full_name?.trim() || lease.tenant_name?.trim() || lease.tenant_email,
       propertyName: property?.name ?? "Your rental",
       unitLabel: unit.label,
       dueDate: inv.due_date,
@@ -98,7 +99,7 @@ async function runReminders() {
       leaseId: lease.id,
       invoiceId: inv.id,
       email: profile?.email ?? lease.tenant_email,
-      phone: profile?.phone ?? null,
+      phone: profile?.phone ?? lease.tenant_phone ?? null,
       notifyEmail: profile?.notify_email ?? true,
       notifySms: profile?.notify_sms ?? true,
       subject: message.subject,
