@@ -42,10 +42,8 @@ export function DocumentUpload({
     const form = e.currentTarget;
     const fileInput = form.elements.namedItem("file") as HTMLInputElement;
     const file = fileInput.files?.[0];
-    const selectedLeaseId =
-      leaseId ??
-      ((form.elements.namedItem("lease_id") as HTMLSelectElement | null)?.value || "") ||
-      null;
+    const leaseFromForm = (form.elements.namedItem("lease_id") as HTMLSelectElement | null)?.value;
+    const selectedLeaseId = leaseId ?? (leaseFromForm || null);
     const kind = (form.elements.namedItem("kind") as HTMLSelectElement).value;
 
     if (!file) {
