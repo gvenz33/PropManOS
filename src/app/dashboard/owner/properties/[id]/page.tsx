@@ -1,12 +1,43 @@
+import { ActionMessage } from "@/components/action-message";
+import { formatCentsAsDollars } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createLease, createUnit } from "../../../actions";
+import { createLease, createUnit, endLease } from "../../../actions";
 
-type Props = { params: Promise<{ id: string }> };
+type LeaseRow = {
+  id: string;
+  tenant_email: string;
+  tenant_id: string | null;
+  status: string;
+  rent_amount_cents: number;
+  start_date: string;
+  profiles: { full_name: string } | { full_name: string }[] | null;
+};
 
-export default async function OwnerPropertyDetailPage({ params }: Props) {
+type UnitRow = {
+  id: string;
+  label: string;
+  rent_amount_cents: number;
+  due_day_of_month: number;
+  late_fee_cents: number;
+  bank_connection_note: string | null;
+  leases: LeaseRow[] | null;
+};
+
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ success?: string; error?: string }>;
+};
+
+function tenantName(lease: LeaseRow) {
+  const profile = Array.isArray(lease.profiles) ? lease.profiles[0] : lease.profiles;
+  return profile?.full_name?.trim() || null;
+}
+
+export default async function OwnerPropertyDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { success, error } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -24,9 +55,13 @@ export default async function OwnerPropertyDetailPage({ params }: Props) {
 
   const { data: units } = await supabase
     .from("units")
-    .select("*, leases(id, tenant_email, status, rent_amount_cents)")
+    .select(
+      "id, label, rent_amount_cents, due_day_of_month, late_fee_cents, bank_connection_note, leases(id, tenant_email, tenant_id, status, rent_amount_cents, start_date, profiles(full_name))",
+    )
     .eq("property_id", id)
     .order("label");
+
+  const unitRows = (units ?? []) as UnitRow[];
 
   return (
     <div className="space-y-10">
@@ -38,15 +73,16 @@ export default async function OwnerPropertyDetailPage({ params }: Props) {
         <p className="text-[var(--muted)]">
           {[property.address_line1, property.city, property.state, property.postal_code]
             .filter(Boolean)
-            .join(", ") || "Add address details from the list view later."}
+            .join(", ") || "Add the street address when you create your next property."}
         </p>
       </div>
+
+      <ActionMessage success={success} error={error} />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Add unit</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Rent amounts are in cents for precision (e.g. $1,250.00 → 125000). Bank connection is a
-          short note until Plaid/Stripe is wired.
+          Each apartment, suite, or rental space gets its own unit. Set rent and due date here.
         </p>
         <form action={createUnit} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input type="hidden" name="property_id" value={id} />
@@ -55,23 +91,23 @@ export default async function OwnerPropertyDetailPage({ params }: Props) {
             <input
               name="label"
               required
-              placeholder="101"
+              placeholder="Unit 101"
               className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-sm font-medium">Monthly rent (cents)</label>
+            <label className="text-sm font-medium">Monthly rent ($)</label>
             <input
-              name="rent_amount_cents"
-              type="number"
+              name="rent_amount_dollars"
+              type="text"
+              inputMode="decimal"
               required
-              min={0}
-              placeholder="125000"
+              placeholder="1250"
               className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-sm font-medium">Due day (1–28)</label>
+            <label className="text-sm font-medium">Due day of month (1–28)</label>
             <input
               name="due_day_of_month"
               type="number"
@@ -82,12 +118,12 @@ export default async function OwnerPropertyDetailPage({ params }: Props) {
             />
           </div>
           <div>
-            <label className="text-sm font-medium">Late fee (cents)</label>
+            <label className="text-sm font-medium">Late fee ($)</label>
             <input
-              name="late_fee_cents"
-              type="number"
-              min={0}
-              defaultValue={0}
+              name="late_fee_dollars"
+              type="text"
+              inputMode="decimal"
+              defaultValue="0"
               className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
             />
           </div>
@@ -102,10 +138,10 @@ export default async function OwnerPropertyDetailPage({ params }: Props) {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="text-sm font-medium">Bank / payout note</label>
+            <label className="text-sm font-medium">Bank / payout note (optional)</label>
             <input
               name="bank_connection_note"
-              placeholder="Plaid item id, last4, etc."
+              placeholder="Account nickname, last4, etc."
               className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
             />
           </div>
@@ -121,93 +157,146 @@ export default async function OwnerPropertyDetailPage({ params }: Props) {
       </section>
 
       <div className="space-y-6">
-        {(units ?? []).map((u) => (
-          <div
-            key={u.id}
-            className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold">Unit {u.label}</h3>
-                <p className="text-sm text-[var(--muted)]">
-                  Rent ${(u.rent_amount_cents / 100).toFixed(2)} · Due day {u.due_day_of_month}
-                  {u.late_fee_cents ? ` · Late fee $${(u.late_fee_cents / 100).toFixed(2)}` : ""}
-                </p>
-                {u.bank_connection_note ? (
-                  <p className="mt-2 text-xs text-[var(--muted)]">Bank: {u.bank_connection_note}</p>
-                ) : null}
-              </div>
-            </div>
+        {unitRows.map((u) => {
+          const activeLeases = (u.leases ?? []).filter((l) => l.status === "active");
+          const defaultRent = (u.rent_amount_cents / 100).toFixed(2);
 
-            <div className="mt-4 border-t border-[var(--border)] pt-4">
-              <h4 className="text-sm font-semibold">Active leases</h4>
-              <ul className="mt-2 space-y-2 text-sm">
-                {(u.leases as { id: string; tenant_email: string; status: string }[] | null)?.map(
-                  (l) => (
-                    <li key={l.id} className="text-[var(--muted)]">
-                      {l.tenant_email} · {l.status}
-                    </li>
-                  ),
-                )}
-                {!u.leases?.length ? (
-                  <li className="text-[var(--muted)]">No leases yet for this unit.</li>
-                ) : null}
-              </ul>
-            </div>
+          return (
+            <div
+              key={u.id}
+              className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Unit {u.label}</h3>
+                  <p className="text-sm text-[var(--muted)]">
+                    Rent {formatCentsAsDollars(u.rent_amount_cents)} · Due day {u.due_day_of_month}
+                    {u.late_fee_cents ? ` · Late fee ${formatCentsAsDollars(u.late_fee_cents)}` : ""}
+                  </p>
+                  {u.bank_connection_note ? (
+                    <p className="mt-2 text-xs text-[var(--muted)]">Bank: {u.bank_connection_note}</p>
+                  ) : null}
+                </div>
+              </div>
 
-            <form action={createLease} className="mt-6 grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-2">
-              <input type="hidden" name="unit_id" value={u.id} />
-              <div className="sm:col-span-2">
-                <label className="text-sm font-medium">Tenant email</label>
-                <input
-                  name="tenant_email"
-                  type="email"
-                  required
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                  placeholder="tenant@email.com"
-                />
+              <div className="mt-4 border-t border-[var(--border)] pt-4">
+                <h4 className="text-sm font-semibold">Tenants on this unit</h4>
+                <ul className="mt-2 space-y-3 text-sm">
+                  {activeLeases.map((l) => {
+                    const name = tenantName(l);
+                    const linked = Boolean(l.tenant_id);
+                    return (
+                      <li
+                        key={l.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--muted-bg)]/40 px-3 py-2"
+                      >
+                        <div>
+                          <p className="font-medium text-[var(--foreground)]">
+                            {name ?? l.tenant_email}
+                          </p>
+                          <p className="text-[var(--muted)]">
+                            {name ? `${l.tenant_email} · ` : ""}
+                            {formatCentsAsDollars(l.rent_amount_cents)} · Started{" "}
+                            {new Date(`${l.start_date}T12:00:00`).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              linked
+                                ? "bg-[var(--accent-dim)] text-[var(--foreground)]"
+                                : "bg-[var(--muted-bg)] text-[var(--muted)]"
+                            }`}
+                          >
+                            {linked ? "Portal connected" : "Awaiting signup"}
+                          </span>
+                          <form action={endLease}>
+                            <input type="hidden" name="lease_id" value={l.id} />
+                            <input type="hidden" name="property_id" value={id} />
+                            <button
+                              type="submit"
+                              className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs font-medium hover:bg-[var(--muted-bg)]"
+                            >
+                              End lease
+                            </button>
+                          </form>
+                        </div>
+                      </li>
+                    );
+                  })}
+                  {!activeLeases.length ? (
+                    <li className="text-[var(--muted)]">No tenant assigned yet.</li>
+                  ) : null}
+                </ul>
               </div>
-              <div>
-                <label className="text-sm font-medium">Rent (cents)</label>
-                <input
-                  name="rent_amount_cents"
-                  type="number"
-                  required
-                  min={0}
-                  defaultValue={u.rent_amount_cents}
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Start date</label>
-                <input
-                  name="start_date"
-                  type="date"
-                  required
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">End date (optional)</label>
-                <input
-                  name="end_date"
-                  type="date"
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <button
-                  type="submit"
-                  className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--muted-bg)]"
-                >
-                  Add lease
-                </button>
-              </div>
-            </form>
-          </div>
-        ))}
-        {units?.length === 0 ? (
-          <p className="text-[var(--muted)]">No units yet. Create one above.</p>
+
+              <form
+                action={createLease}
+                className="mt-6 grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-2"
+              >
+                <input type="hidden" name="unit_id" value={u.id} />
+                <input type="hidden" name="property_id" value={id} />
+                <div className="sm:col-span-2">
+                  <h4 className="text-sm font-semibold">Add tenant to this unit</h4>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    Use the email your tenant will sign up with at GotMyRent.com. Their portal
+                    connects automatically after they create an account.
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium">Tenant email</label>
+                  <input
+                    name="tenant_email"
+                    type="email"
+                    required
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                    placeholder="tenant@email.com"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Monthly rent ($)</label>
+                  <input
+                    name="rent_amount_dollars"
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    defaultValue={defaultRent}
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Lease start date</label>
+                  <input
+                    name="start_date"
+                    type="date"
+                    required
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Lease end date (optional)</label>
+                  <input
+                    name="end_date"
+                    type="date"
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="flex items-end sm:col-span-2">
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Add tenant
+                  </button>
+                </div>
+              </form>
+            </div>
+          );
+        })}
+        {unitRows.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center text-[var(--muted)]">
+            No units yet. Add your first unit above, then assign a tenant to each one.
+          </p>
         ) : null}
       </div>
     </div>

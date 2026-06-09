@@ -1,8 +1,17 @@
 "use server";
 
+import { parseDollarsToCents } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
+function propertiesPath(query?: string) {
+  return `/dashboard/owner/properties${query ? `?${query}` : ""}`;
+}
+
+function propertyPath(propertyId: string, query?: string) {
+  return `/dashboard/owner/properties/${propertyId}${query ? `?${query}` : ""}`;
+}
 
 export async function signOutAction() {
   const supabase = await createClient();
@@ -15,64 +24,123 @@ export async function createProperty(formData: FormData): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) redirect("/login");
 
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
+  if (!name) {
+    redirect(propertiesPath(`error=${encodeURIComponent("Property name is required.")}`));
+  }
 
-  const { error } = await supabase.from("properties").insert({
-    owner_id: user.id,
-    name,
-    address_line1: String(formData.get("address_line1") ?? "").trim() || null,
-    city: String(formData.get("city") ?? "").trim() || null,
-    state: String(formData.get("state") ?? "").trim() || null,
-    postal_code: String(formData.get("postal_code") ?? "").trim() || null,
-  });
-  if (error) return;
+  const { data, error } = await supabase
+    .from("properties")
+    .insert({
+      owner_id: user.id,
+      name,
+      address_line1: String(formData.get("address_line1") ?? "").trim() || null,
+      city: String(formData.get("city") ?? "").trim() || null,
+      state: String(formData.get("state") ?? "").trim() || null,
+      postal_code: String(formData.get("postal_code") ?? "").trim() || null,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    redirect(propertiesPath(`error=${encodeURIComponent(error?.message ?? "Could not save property.")}`));
+  }
+
   revalidatePath("/dashboard/owner/properties");
+  redirect(propertyPath(data.id, "success=property"));
 }
 
 export async function createUnit(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const propertyId = String(formData.get("property_id") ?? "");
   const label = String(formData.get("label") ?? "").trim();
-  const rent = Number(formData.get("rent_amount_cents") ?? 0);
+  const rent = parseDollarsToCents(formData.get("rent_amount_dollars"));
+  const lateFee = parseDollarsToCents(formData.get("late_fee_dollars")) ?? 0;
   const dueDay = Number(formData.get("due_day_of_month") ?? 1);
-  const lateFee = Number(formData.get("late_fee_cents") ?? 0);
   const grace = Number(formData.get("grace_days") ?? 0);
-  if (!propertyId || !label || !rent || rent < 0) return;
+
+  if (!propertyId || !label) {
+    redirect(propertyPath(propertyId || "", `error=${encodeURIComponent("Unit label is required.")}`));
+  }
+  if (rent === null || rent <= 0) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent("Enter a valid monthly rent.")}`));
+  }
 
   const { error } = await supabase.from("units").insert({
     property_id: propertyId,
     label,
-    rent_amount_cents: Math.round(rent),
+    rent_amount_cents: rent,
     due_day_of_month: Math.min(28, Math.max(1, dueDay)),
-    late_fee_cents: Math.max(0, Math.round(lateFee)),
+    late_fee_cents: Math.max(0, lateFee),
     grace_days: Math.max(0, Math.round(grace)),
     bank_connection_note: String(formData.get("bank_connection_note") ?? "").trim() || null,
   });
-  if (error) return;
-  revalidatePath(`/dashboard/owner/properties/${propertyId}`);
+  if (error) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
+  }
+  revalidatePath(propertyPath(propertyId));
+  redirect(propertyPath(propertyId, "success=unit"));
 }
 
 export async function createLease(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const unitId = String(formData.get("unit_id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
   const tenantEmail = String(formData.get("tenant_email") ?? "").trim().toLowerCase();
   const start = String(formData.get("start_date") ?? "");
-  const rent = Number(formData.get("rent_amount_cents") ?? 0);
-  if (!unitId || !tenantEmail || !start || rent < 0) return;
+  const rent = parseDollarsToCents(formData.get("rent_amount_dollars"));
+
+  if (!unitId || !propertyId) {
+    redirect(propertiesPath(`error=${encodeURIComponent("Missing unit information.")}`));
+  }
+  if (!tenantEmail) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent("Tenant email is required.")}`));
+  }
+  if (!start) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent("Lease start date is required.")}`));
+  }
+  if (rent === null || rent < 0) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent("Enter a valid rent amount.")}`));
+  }
 
   const { error } = await supabase.from("leases").insert({
     unit_id: unitId,
     tenant_email: tenantEmail,
-    rent_amount_cents: Math.round(rent),
+    rent_amount_cents: rent,
     start_date: start,
     end_date: String(formData.get("end_date") ?? "").trim() || null,
     status: "active",
   });
-  if (error) return;
-  revalidatePath("/dashboard/owner/properties");
+  if (error) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
+  }
+  revalidatePath(propertyPath(propertyId));
+  redirect(propertyPath(propertyId, "success=lease"));
+}
+
+export async function endLease(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const leaseId = String(formData.get("lease_id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!leaseId || !propertyId) {
+    redirect(propertiesPath(`error=${encodeURIComponent("Missing lease information.")}`));
+  }
+
+  const { error } = await supabase
+    .from("leases")
+    .update({
+      status: "ended",
+      end_date: new Date().toISOString().slice(0, 10),
+    })
+    .eq("id", leaseId);
+
+  if (error) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
+  }
+  revalidatePath(propertyPath(propertyId));
+  redirect(propertyPath(propertyId, "success=lease-ended"));
 }
 
 export async function generateMonthlyInvoicesForm() {

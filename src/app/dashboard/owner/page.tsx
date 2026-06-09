@@ -44,10 +44,26 @@ export default async function OwnerHomePage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
         <p className="mt-1 text-[var(--muted)]">
-          Your portfolio at a glance. Use the nav to manage units, rent, and CRM
-          follow-ups.
+          Your portfolio at a glance. Add properties, units, and tenants from the Properties
+          section.
         </p>
       </div>
+
+      {(propCount ?? 0) === 0 ? (
+        <section className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent-dim)]/20 p-6">
+          <h2 className="font-semibold">Set up your first property</h2>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Start by adding a building you manage, then create units and assign tenant emails for
+            each rental.
+          </p>
+          <Link
+            href="/dashboard/owner/properties"
+            className="mt-4 inline-flex rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
+          >
+            Add a property
+          </Link>
+        </section>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-3">
         {[
           { label: "Properties", value: propCount ?? 0, href: "/dashboard/owner/properties" },
