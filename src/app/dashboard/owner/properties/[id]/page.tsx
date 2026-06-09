@@ -19,18 +19,7 @@ import {
   updateUnitPayments,
 } from "../../../actions";
 
-type LeaseRow = {
-  id: string;
-  tenant_email: string;
-  tenant_name: string | null;
-  tenant_phone: string | null;
-  tenant_id: string | null;
-  status: string;
-  rent_amount_cents: number;
-  start_date: string;
-  end_date: string | null;
-  profiles: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null;
-};
+import { displayTenantName, displayTenantPhone, type LeaseRow } from "@/lib/leases";
 
 type UnitRow = {
   id: string;
@@ -48,20 +37,6 @@ type Props = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ success?: string; error?: string }>;
 };
-
-function leaseProfile(lease: LeaseRow) {
-  return Array.isArray(lease.profiles) ? lease.profiles[0] : lease.profiles;
-}
-
-function displayTenantName(lease: LeaseRow) {
-  const profile = leaseProfile(lease);
-  return profile?.full_name?.trim() || lease.tenant_name?.trim() || null;
-}
-
-function displayTenantPhone(lease: LeaseRow) {
-  const profile = leaseProfile(lease);
-  return profile?.phone?.trim() || lease.tenant_phone?.trim() || "";
-}
 
 export default async function OwnerPropertyDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
@@ -326,6 +301,12 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
                     {u.late_fee_cents ? ` · Late fee ${formatCentsAsDollars(u.late_fee_cents)}` : ""}
                   </p>
                 </div>
+                <Link
+                  href={`/dashboard/owner/properties/${id}/units/${u.id}`}
+                  className="text-sm font-semibold text-[var(--accent)] hover:underline"
+                >
+                  Unit profile →
+                </Link>
               </div>
 
               <form
@@ -393,9 +374,17 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
                         className="rounded-lg border border-[var(--border)] bg-[var(--muted-bg)]/40 p-4"
                       >
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-medium text-[var(--foreground)]">
-                            {name ?? l.tenant_email}
-                          </p>
+                          <div>
+                            <p className="font-medium text-[var(--foreground)]">
+                              {name ?? l.tenant_email}
+                            </p>
+                            <Link
+                              href={`/dashboard/owner/properties/${id}/tenants/${l.id}`}
+                              className="text-xs text-[var(--accent)] hover:underline"
+                            >
+                              Tenant profile →
+                            </Link>
+                          </div>
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                               linked

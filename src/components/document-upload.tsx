@@ -11,6 +11,8 @@ type KindOption = { value: DocumentKind; label: string };
 
 export function DocumentUpload({
   propertyId,
+  unitId,
+  leaseId,
   category = "internal",
   kindOptions,
   defaultKind,
@@ -18,6 +20,8 @@ export function DocumentUpload({
   title = "Upload document",
 }: {
   propertyId?: string;
+  unitId?: string;
+  leaseId?: string;
   category?: DocumentCategory;
   kindOptions: KindOption[];
   defaultKind?: DocumentKind;
@@ -68,6 +72,8 @@ export function DocumentUpload({
 
     const reg = await registerDocument({
       propertyId: propertyId ?? null,
+      unitId: unitId ?? null,
+      leaseId: leaseId ?? null,
       category,
       storagePath: path,
       filename: file.name,

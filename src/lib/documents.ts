@@ -28,6 +28,15 @@ export const INTERNAL_DOCUMENT_KINDS: DocumentKind[] = [
   "lease",
 ];
 
+export const PROFILE_DOCUMENT_KINDS: DocumentKind[] = [
+  "lease",
+  "rental_application",
+  "rental_agreement",
+  "notice",
+  "receipt",
+  "other",
+];
+
 export const RENTAL_FORM_KINDS: DocumentKind[] = [
   "rental_application",
   "rental_agreement",
