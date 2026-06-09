@@ -23,7 +23,7 @@ export default async function LoginPage({ searchParams }: Props) {
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-4 py-16">
       <div className="flex justify-center">
-        <BrandLogo variant="icon" href="/" />
+        <BrandLogo variant="full" href="/" priority />
       </div>
       <h1 className="mt-4 text-center text-2xl font-bold">Sign in</h1>
       {sp.error ? (

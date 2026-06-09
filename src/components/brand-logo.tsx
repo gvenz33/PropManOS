@@ -17,8 +17,8 @@ export function BrandLogo({
 }: BrandLogoProps) {
   const isIcon = variant === "icon";
   const src = isIcon ? BRAND.icon : BRAND.logo;
-  const width = isIcon ? 44 : 220;
-  const height = isIcon ? 44 : 72;
+  const width = isIcon ? 44 : 280;
+  const height = isIcon ? 44 : 80;
 
   const image = (
     <Image
@@ -27,7 +27,7 @@ export function BrandLogo({
       width={width}
       height={height}
       priority={priority}
-      className={isIcon ? "rounded-full" : "h-auto w-auto max-h-14 sm:max-h-16"}
+      className={isIcon ? "rounded-full" : "h-auto w-auto max-h-16 sm:max-h-20"}
     />
   );
 
