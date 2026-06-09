@@ -1,8 +1,24 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { BRAND } from "@/lib/brand";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string; next?: string }>;
+}) {
+  const params = await searchParams;
+  if (params.code) {
+    const qs = new URLSearchParams({
+      code: params.code,
+      next: params.next ?? "/dashboard",
+    });
+    redirect(`/auth/callback?${qs.toString()}`);
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
       <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
