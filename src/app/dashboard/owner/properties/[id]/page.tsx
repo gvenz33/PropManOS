@@ -1,4 +1,5 @@
 import { ActionMessage } from "@/components/action-message";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { formatCentsAsDollars } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -317,6 +318,10 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
 
               <div className="mt-4 border-t border-[var(--border)] pt-4">
                 <h4 className="text-sm font-semibold">Tenants on this unit</h4>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  Remove tenant clears a mistaken assignment. End lease keeps history when a tenancy
+                  actually finished.
+                </p>
                 <ul className="mt-2 space-y-4 text-sm">
                   {activeLeases.map((l) => {
                     const name = displayTenantName(l);
@@ -416,6 +421,13 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
                             >
                               End lease
                             </button>
+                            <ConfirmSubmitButton
+                              formAction={removeTenantFromUnit}
+                              message="Remove this tenant from the unit? Any unpaid invoices for this assignment will be deleted."
+                              className="rounded-lg border border-[var(--danger)]/40 px-4 py-2 text-sm font-semibold text-[var(--danger)] hover:bg-[var(--danger)]/10"
+                            >
+                              Remove tenant
+                            </ConfirmSubmitButton>
                           </div>
                         </form>
                       </li>

@@ -268,6 +268,42 @@ export async function endLease(formData: FormData): Promise<void> {
   redirect(propertyPath(propertyId, "success=lease-ended"));
 }
 
+export async function removeTenantFromUnit(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const leaseId = String(formData.get("lease_id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!leaseId || !propertyId) {
+    redirect(propertiesPath(`error=${encodeURIComponent("Missing lease information.")}`));
+  }
+
+  const { count: paidCount } = await supabase
+    .from("invoices")
+    .select("*", { count: "exact", head: true })
+    .eq("lease_id", leaseId)
+    .eq("status", "paid");
+
+  if ((paidCount ?? 0) > 0) {
+    redirect(
+      propertyPath(
+        propertyId,
+        `error=${encodeURIComponent("Cannot remove a tenant with paid invoices. Use End lease to close the tenancy instead.")}`,
+      ),
+    );
+  }
+
+  const { error } = await supabase
+    .from("leases")
+    .delete()
+    .eq("id", leaseId)
+    .eq("status", "active");
+
+  if (error) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
+  }
+  revalidatePath(propertyPath(propertyId));
+  redirect(propertyPath(propertyId, "success=tenant-removed"));
+}
+
 export async function generateMonthlyInvoicesForm() {
   await generateMonthlyInvoices();
 }
