@@ -5,6 +5,21 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  // Supabase may fall back to Site URL (/) with ?code= when the callback URL
+  // is missing from the project's redirect allow list — forward to the handler.
+  const authCode = request.nextUrl.searchParams.get("code");
+  if (
+    authCode &&
+    !request.nextUrl.pathname.startsWith("/auth/callback")
+  ) {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    if (!callbackUrl.searchParams.has("next")) {
+      callbackUrl.searchParams.set("next", "/dashboard");
+    }
+    return NextResponse.redirect(callbackUrl);
+  }
+
   if (!supabaseUrl || !supabaseAnonKey) {
     return NextResponse.next({ request });
   }
