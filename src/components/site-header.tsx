@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 
 const nav = [
   { href: "/faq/tenants", label: "Tenant FAQ" },
@@ -10,12 +11,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--background)]/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link
-          href="/"
-          className="text-lg font-semibold tracking-tight text-[var(--foreground)]"
-        >
-          Prop Man<span className="text-[var(--accent)]">OS</span>
-        </Link>
+        <BrandLogo priority />
         <nav className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
           {nav.map((item) => (
             <Link
