@@ -1,3 +1,6 @@
+export const DOCUMENT_CATEGORIES = ["internal", "rental_form"] as const;
+export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
+
 export const DOCUMENT_KINDS = [
   "rental_application",
   "rental_agreement",
@@ -18,21 +21,25 @@ export const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
   other: "Other",
 };
 
-export const TENANT_DOCUMENT_KINDS: DocumentKind[] = [
+export const INTERNAL_DOCUMENT_KINDS: DocumentKind[] = [
+  "other",
+  "notice",
+  "receipt",
+  "lease",
+];
+
+export const RENTAL_FORM_KINDS: DocumentKind[] = [
   "rental_application",
   "rental_agreement",
   "lease",
   "notice",
-  "receipt",
   "other",
 ];
 
-export const PROPERTY_DOCUMENT_KINDS: DocumentKind[] = [
-  "notice",
-  "receipt",
-  "lease",
-  "other",
-];
+export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
+  internal: "Internal file",
+  rental_form: "Rental form",
+};
 
 export function documentKindLabel(kind: string): string {
   return DOCUMENT_KIND_LABELS[kind as DocumentKind] ?? kind;

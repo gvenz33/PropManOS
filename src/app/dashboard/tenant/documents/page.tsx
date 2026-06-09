@@ -1,4 +1,3 @@
-import { DocumentList } from "@/components/document-list";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -9,27 +8,19 @@ export default async function TenantDocumentsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: leases } = await supabase.from("leases").select("id").eq("tenant_id", user.id);
-  const leaseIds = (leases ?? []).map((l) => l.id);
-
-  const { data: docs } =
-    leaseIds.length > 0
-      ? await supabase
-          .from("documents")
-          .select("id, filename, kind, created_at")
-          .in("lease_id", leaseIds)
-          .order("created_at", { ascending: false })
-      : { data: [] as never[] };
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
         <p className="mt-1 text-[var(--muted)]">
-          Files your landlord shared for your lease — applications, agreements, notices, and more.
+          Your landlord sends rental applications, agreements, and other forms directly to your email
+          or phone. Check your inbox or messages for download links from Got My Rent.
         </p>
       </div>
-      <DocumentList docs={docs ?? []} emptyMessage="No documents linked to your leases yet." />
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 text-sm text-[var(--muted)] shadow-sm">
+        Forms are not stored in this portal. If you need a rental application or lease document,
+        contact your landlord and they can send it to you.
+      </div>
     </div>
   );
 }

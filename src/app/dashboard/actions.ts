@@ -1,6 +1,11 @@
 "use server";
 
+import { BRAND } from "@/lib/brand";
+import { documentKindLabel } from "@/lib/documents";
 import { parseDollarsToCents } from "@/lib/money";
+import { sendEmail, sendSms } from "@/lib/notifications/outbound";
+import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
+import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -510,8 +515,7 @@ export async function createCrmActivity(formData: FormData): Promise<void> {
 
 export async function registerDocument(params: {
   propertyId: string | null;
-  leaseId: string | null;
-  unitId: string | null;
+  category: "internal" | "rental_form";
   storagePath: string;
   filename: string;
   kind: string;
@@ -522,30 +526,11 @@ export async function registerDocument(params: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Unauthorized" };
 
-  let propertyId = params.propertyId;
-  if (params.leaseId) {
-    const { data: lease } = await supabase
-      .from("leases")
-      .select("id, units(property_id)")
-      .eq("id", params.leaseId)
-      .maybeSingle();
-    const unit = lease?.units as { property_id: string } | { property_id: string }[] | null;
-    const unitRow = Array.isArray(unit) ? unit[0] : unit;
-    if (!unitRow?.property_id) return { error: "Lease not found." };
-
-    const { data: ownedProperty } = await supabase
-      .from("properties")
-      .select("id")
-      .eq("id", unitRow.property_id)
-      .eq("owner_id", user.id)
-      .maybeSingle();
-    if (!ownedProperty) return { error: "Lease not found." };
-    propertyId = propertyId ?? unitRow.property_id;
-  } else if (propertyId) {
+  if (params.propertyId) {
     const { data: property } = await supabase
       .from("properties")
       .select("id")
-      .eq("id", propertyId)
+      .eq("id", params.propertyId)
       .eq("owner_id", user.id)
       .maybeSingle();
     if (!property) return { error: "Property not found." };
@@ -554,15 +539,135 @@ export async function registerDocument(params: {
   const { error } = await supabase.from("documents").insert({
     owner_id: user.id,
     uploaded_by: user.id,
-    property_id: propertyId,
-    lease_id: params.leaseId,
-    unit_id: params.unitId,
+    property_id: params.propertyId,
+    lease_id: null,
+    unit_id: null,
     storage_path: params.storagePath,
     filename: params.filename,
     kind: params.kind,
+    category: params.category,
   });
   if (error) return { error: error.message };
   revalidatePath("/dashboard/owner/documents");
-  if (propertyId) revalidatePath(propertyPath(propertyId));
+  if (params.propertyId) revalidatePath(propertyPath(params.propertyId));
   return { ok: true };
+}
+
+const FORM_LINK_TTL_SECONDS = 60 * 60 * 24 * 7;
+
+export async function sendRentalFormAction(formData: FormData): Promise<{
+  error?: string;
+  sent?: { channel: string; ok: boolean; error?: string }[];
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const documentId = String(formData.get("document_id") ?? "").trim();
+  const propertyId = String(formData.get("property_id") ?? "").trim();
+  const recipientEmail = String(formData.get("recipient_email") ?? "").trim();
+  const recipientPhone = String(formData.get("recipient_phone") ?? "").trim();
+  const recipientName = String(formData.get("recipient_name") ?? "").trim();
+  const message = String(formData.get("message") ?? "").trim();
+  const sendEmailChannel = formData.get("send_email") === "on";
+  const sendSmsChannel = formData.get("send_sms") === "on";
+
+  if (!documentId || !propertyId) return { error: "Missing form information." };
+  if (!sendEmailChannel && !sendSmsChannel) {
+    return { error: "Choose email, text, or both." };
+  }
+  if (sendEmailChannel && !recipientEmail) return { error: "Email is required to send by email." };
+  if (sendSmsChannel && !recipientPhone) return { error: "Phone is required to send by text." };
+
+  const { data: doc } = await supabase
+    .from("documents")
+    .select("id, filename, kind, storage_path, category, properties(name)")
+    .eq("id", documentId)
+    .eq("owner_id", user.id)
+    .eq("property_id", propertyId)
+    .eq("category", "rental_form")
+    .maybeSingle();
+
+  if (!doc) return { error: "Rental form not found." };
+
+  const service = createServiceClient();
+  if (!service) return { error: "File delivery is not configured." };
+
+  const { data: signed, error: signError } = await service.storage
+    .from(PROP_MAN_STORAGE_BUCKET)
+    .createSignedUrl(doc.storage_path, FORM_LINK_TTL_SECONDS);
+
+  if (signError || !signed?.signedUrl) {
+    return { error: signError?.message ?? "Could not create download link." };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const propertyRaw = doc.properties as { name: string } | { name: string }[] | null;
+  const propertyName = Array.isArray(propertyRaw) ? propertyRaw[0]?.name : propertyRaw?.name;
+  const landlordName = profile?.full_name?.trim() || "Your landlord";
+  const greeting = recipientName ? `Hi ${recipientName},` : "Hello,";
+  const formLabel = documentKindLabel(doc.kind);
+  const defaultMessage = `Please review the attached ${formLabel.toLowerCase()} for ${propertyName ?? "the property"}.`;
+  const note = message || defaultMessage;
+
+  const emailBody = `${greeting}
+
+${note}
+
+Download ${doc.filename} (link valid 7 days):
+${signed.signedUrl}
+
+— ${landlordName} via ${BRAND.name}`;
+
+  const smsBody = `${landlordName} sent you ${doc.filename} for ${propertyName ?? "a rental"}: ${signed.signedUrl}`;
+
+  const sent: { channel: string; ok: boolean; error?: string }[] = [];
+
+  if (sendEmailChannel) {
+    const result = await sendEmail(
+      recipientEmail,
+      `${formLabel} — ${propertyName ?? BRAND.name}`,
+      emailBody,
+    );
+    if (result.ok) {
+      await supabase.from("document_sends").insert({
+        document_id: documentId,
+        owner_id: user.id,
+        property_id: propertyId,
+        recipient_name: recipientName || null,
+        recipient_email: recipientEmail,
+        recipient_phone: recipientPhone || null,
+        channel: "email",
+        message: note,
+      });
+    }
+    sent.push({ channel: "email", ...result });
+  }
+
+  if (sendSmsChannel) {
+    const result = await sendSms(recipientPhone, smsBody);
+    if (result.ok) {
+      await supabase.from("document_sends").insert({
+        document_id: documentId,
+        owner_id: user.id,
+        property_id: propertyId,
+        recipient_name: recipientName || null,
+        recipient_email: recipientEmail || null,
+        recipient_phone: recipientPhone,
+        channel: "sms",
+        message: note,
+      });
+    }
+    sent.push({ channel: "sms", ...result });
+  }
+
+  revalidatePath(propertyPath(propertyId));
+  return { sent };
 }

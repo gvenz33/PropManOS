@@ -1,18 +1,25 @@
 "use client";
 
 import { DocumentUpload, kindOptionsFrom } from "@/components/document-upload";
-import { DOCUMENT_KINDS } from "@/lib/documents";
+import { INTERNAL_DOCUMENT_KINDS, RENTAL_FORM_KINDS } from "@/lib/documents";
 
-export function OwnerDocumentUpload({
-  leaseOptions,
-}: {
-  leaseOptions: { id: string; label: string }[];
-}) {
+export function OwnerInternalUpload() {
   return (
     <DocumentUpload
-      title="Upload"
-      kindOptions={kindOptionsFrom([...DOCUMENT_KINDS])}
-      leaseOptions={leaseOptions}
+      title="Upload internal file"
+      category="internal"
+      kindOptions={kindOptionsFrom(INTERNAL_DOCUMENT_KINDS)}
+    />
+  );
+}
+
+export function OwnerRentalFormUpload() {
+  return (
+    <DocumentUpload
+      title="Upload rental form"
+      category="rental_form"
+      defaultKind="rental_application"
+      kindOptions={kindOptionsFrom(RENTAL_FORM_KINDS)}
     />
   );
 }

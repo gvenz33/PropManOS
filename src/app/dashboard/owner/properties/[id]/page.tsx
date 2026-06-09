@@ -2,7 +2,9 @@ import { ActionMessage } from "@/components/action-message";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { DocumentList } from "@/components/document-list";
 import { DocumentUpload, kindOptionsFrom } from "@/components/document-upload";
-import { PROPERTY_DOCUMENT_KINDS, TENANT_DOCUMENT_KINDS } from "@/lib/documents";
+import { RentalFormList } from "@/components/rental-form-list";
+import type { FormRecipient } from "@/components/send-rental-form";
+import { INTERNAL_DOCUMENT_KINDS, RENTAL_FORM_KINDS } from "@/lib/documents";
 import { formatCentsAsDollars } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -94,34 +96,46 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
     filename: string;
     kind: string;
     created_at: string;
-    lease_id: string | null;
-    property_id: string | null;
   };
 
-  const leaseIds = unitRows.flatMap((u) => (u.leases ?? []).map((l) => l.id));
-  const { data: leaseDocs } =
-    leaseIds.length > 0
-      ? await supabase
-          .from("documents")
-          .select("id, filename, kind, created_at, lease_id, property_id")
-          .in("lease_id", leaseIds)
-          .order("created_at", { ascending: false })
-      : { data: [] as PropertyDoc[] };
-  const { data: propertyOnlyDocs } = await supabase
+  const { data: internalDocs } = await supabase
     .from("documents")
-    .select("id, filename, kind, created_at, lease_id, property_id")
+    .select("id, filename, kind, created_at")
     .eq("property_id", id)
-    .is("lease_id", null)
+    .eq("category", "internal")
     .order("created_at", { ascending: false });
 
-  const docsByLease = new Map<string, PropertyDoc[]>();
-  for (const doc of leaseDocs ?? []) {
-    if (!doc.lease_id) continue;
-    const list = docsByLease.get(doc.lease_id) ?? [];
-    list.push(doc);
-    docsByLease.set(doc.lease_id, list);
-  }
-  const propertyLevelDocs = propertyOnlyDocs ?? [];
+  const { data: rentalForms } = await supabase
+    .from("documents")
+    .select("id, filename, kind, created_at")
+    .eq("property_id", id)
+    .eq("category", "rental_form")
+    .order("created_at", { ascending: false });
+
+  const { data: crmContacts } = await supabase
+    .from("crm_contacts")
+    .select("id, name, email, phone")
+    .eq("owner_id", user.id)
+    .order("name");
+
+  const formRecipients: FormRecipient[] = [
+    ...(crmContacts ?? []).map((c) => ({
+      key: `crm-${c.id}`,
+      label: `${c.name} (prospect)`,
+      email: c.email ?? "",
+      phone: c.phone ?? "",
+    })),
+    ...unitRows.flatMap((u) =>
+      (u.leases ?? [])
+        .filter((l) => l.status === "active")
+        .map((l) => ({
+          key: `lease-${l.id}`,
+          label: `${displayTenantName(l) ?? l.tenant_email} (tenant)`,
+          email: l.tenant_email,
+          phone: displayTenantPhone(l),
+        })),
+    ),
+  ];
 
   return (
     <div className="space-y-10">
@@ -194,21 +208,46 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Property files</h2>
+        <h2 className="text-lg font-semibold">Internal files</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Building-level documents such as insurance, permits, or portfolio notices.
+          Private landlord records for this property — insurance, permits, notes, and other files
+          tenants never see.
         </p>
         <div className="mt-4">
           <DocumentList
-            docs={propertyLevelDocs}
-            emptyMessage="No property files uploaded yet."
+            docs={(internalDocs ?? []) as PropertyDoc[]}
+            emptyMessage="No internal files yet."
           />
         </div>
         <DocumentUpload
           propertyId={id}
-          hideLeasePicker
-          title="Upload property file"
-          kindOptions={kindOptionsFrom(PROPERTY_DOCUMENT_KINDS)}
+          category="internal"
+          title="Upload internal file"
+          kindOptions={kindOptionsFrom(INTERNAL_DOCUMENT_KINDS)}
+          compact
+        />
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Rental forms</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Keep applications, agreements, and other forms on file, then send them to prospects or
+          active tenants by email or text. Recipients get a download link — nothing is posted to
+          the tenant portal.
+        </p>
+        <div className="mt-4">
+          <RentalFormList
+            forms={(rentalForms ?? []) as PropertyDoc[]}
+            propertyId={id}
+            recipients={formRecipients}
+          />
+        </div>
+        <DocumentUpload
+          propertyId={id}
+          category="rental_form"
+          defaultKind="rental_application"
+          title="Upload rental form"
+          kindOptions={kindOptionsFrom(RENTAL_FORM_KINDS)}
           compact
         />
       </section>
@@ -488,29 +527,6 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
                             </ConfirmSubmitButton>
                           </div>
                         </form>
-                        <div className="mt-4 border-t border-[var(--border)] pt-4">
-                          <h5 className="text-sm font-semibold">Tenant documents</h5>
-                          <p className="mt-1 text-xs text-[var(--muted)]">
-                            Rental applications, agreements, and other files for this tenant. They
-                            can download these from their portal.
-                          </p>
-                          <div className="mt-3">
-                            <DocumentList
-                              docs={docsByLease.get(l.id) ?? []}
-                              emptyMessage="No tenant documents yet."
-                            />
-                          </div>
-                          <DocumentUpload
-                            propertyId={id}
-                            leaseId={l.id}
-                            unitId={u.id}
-                            hideLeasePicker
-                            compact
-                            title="Upload tenant file"
-                            defaultKind="rental_application"
-                            kindOptions={kindOptionsFrom(TENANT_DOCUMENT_KINDS)}
-                          />
-                        </div>
                       </li>
                     );
                   })}

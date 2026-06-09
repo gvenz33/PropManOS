@@ -1,6 +1,6 @@
 "use client";
 
-import { documentKindLabel, type DocumentKind } from "@/lib/documents";
+import { documentKindLabel, type DocumentCategory, type DocumentKind } from "@/lib/documents";
 import { createClient } from "@/lib/supabase/client";
 import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
 import { useRouter } from "next/navigation";
@@ -42,8 +42,6 @@ export function DocumentUpload({
     const form = e.currentTarget;
     const fileInput = form.elements.namedItem("file") as HTMLInputElement;
     const file = fileInput.files?.[0];
-    const leaseFromForm = (form.elements.namedItem("lease_id") as HTMLSelectElement | null)?.value;
-    const selectedLeaseId = leaseId ?? (leaseFromForm || null);
     const kind = (form.elements.namedItem("kind") as HTMLSelectElement).value;
 
     if (!file) {
@@ -76,8 +74,7 @@ export function DocumentUpload({
 
     const reg = await registerDocument({
       propertyId: propertyId ?? null,
-      leaseId: selectedLeaseId,
-      unitId: unitId ?? null,
+      category,
       storagePath: path,
       filename: file.name,
       kind,
@@ -112,22 +109,6 @@ export function DocumentUpload({
             className="mt-1 block w-full text-sm"
           />
         </div>
-        {!hideLeasePicker && !leaseId ? (
-          <div>
-            <label className="text-sm font-medium">Lease / tenant</label>
-            <select
-              name="lease_id"
-              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-            >
-              <option value="">Portfolio-level (not tied to a lease)</option>
-              {leaseOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
         <div>
           <label className="text-sm font-medium">Document type</label>
           <select
