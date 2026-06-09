@@ -289,7 +289,7 @@ using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 create policy crm_activities_owner on public.crm_activities for all
 using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
--- Storage bucket (create in Dashboard → Storage → New bucket "documents", public: false)
+-- Legacy storage bucket (superseded by propmanos / PropManOS bucket migration)
 -- Policies below assume bucket id = 'documents'
 
 insert into storage.buckets (id, name, public)

@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { registerDocument } from "../../actions";
@@ -43,7 +44,7 @@ export function DocumentUpload({
     const safeName = file.name.replace(/[^\w.\-]+/g, "_");
     const path = `${user.id}/${crypto.randomUUID()}-${safeName}`;
 
-    const { error: upErr } = await supabase.storage.from("documents").upload(path, file, {
+    const { error: upErr } = await supabase.storage.from(PROP_MAN_STORAGE_BUCKET).upload(path, file, {
       upsert: false,
     });
     if (upErr) {
