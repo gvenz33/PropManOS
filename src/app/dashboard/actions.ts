@@ -52,6 +52,39 @@ export async function createProperty(formData: FormData): Promise<void> {
   redirect(propertyPath(data.id, "success=property"));
 }
 
+export async function updateProperty(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const propertyId = String(formData.get("property_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!propertyId || !name) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent("Property name is required.")}`));
+  }
+
+  const { error } = await supabase
+    .from("properties")
+    .update({
+      name,
+      address_line1: String(formData.get("address_line1") ?? "").trim() || null,
+      city: String(formData.get("city") ?? "").trim() || null,
+      state: String(formData.get("state") ?? "").trim() || null,
+      postal_code: String(formData.get("postal_code") ?? "").trim() || null,
+    })
+    .eq("id", propertyId)
+    .eq("owner_id", user.id);
+
+  if (error) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
+  }
+
+  revalidatePath(propertyPath(propertyId));
+  redirect(propertyPath(propertyId, "success=property"));
+}
+
 export async function createUnit(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const propertyId = String(formData.get("property_id") ?? "");

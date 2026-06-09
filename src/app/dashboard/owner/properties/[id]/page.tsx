@@ -3,7 +3,7 @@ import { formatCentsAsDollars } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createLease, createUnit, endLease } from "../../../actions";
+import { createLease, createUnit, endLease, updateProperty } from "../../../actions";
 
 type LeaseRow = {
   id: string;
@@ -70,14 +70,68 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
           ← All properties
         </Link>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">{property.name}</h1>
-        <p className="text-[var(--muted)]">
-          {[property.address_line1, property.city, property.state, property.postal_code]
-            .filter(Boolean)
-            .join(", ") || "Add the street address when you create your next property."}
-        </p>
       </div>
 
       <ActionMessage success={success} error={error} />
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Property details</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Update the name and address for this building.
+        </p>
+        <form action={updateProperty} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <input type="hidden" name="property_id" value={id} />
+          <div className="sm:col-span-2">
+            <label className="text-sm font-medium">Property name</label>
+            <input
+              name="name"
+              required
+              defaultValue={property.name}
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Street address</label>
+            <input
+              name="address_line1"
+              defaultValue={property.address_line1 ?? ""}
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">City</label>
+            <input
+              name="city"
+              defaultValue={property.city ?? ""}
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">State</label>
+            <input
+              name="state"
+              defaultValue={property.state ?? ""}
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Postal code</label>
+            <input
+              name="postal_code"
+              defaultValue={property.postal_code ?? ""}
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex items-end sm:col-span-2">
+            <button
+              type="submit"
+              className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--muted-bg)]"
+            >
+              Save address
+            </button>
+          </div>
+        </form>
+      </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Add unit</h2>

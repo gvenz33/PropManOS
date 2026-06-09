@@ -8,6 +8,7 @@ const successCopy: Record<string, string> = {
   unit: "Unit added.",
   lease: "Tenant added to this unit.",
   "lease-ended": "Lease ended.",
+  updated: "Property updated.",
 };
 
 export function ActionMessage({ success, error }: Props) {
