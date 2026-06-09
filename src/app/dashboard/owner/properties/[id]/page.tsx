@@ -8,6 +8,7 @@ import {
   createLease,
   createUnit,
   endLease,
+  removeTenantFromUnit,
   updateLease,
   updateProperty,
   updateUnitPayments,
