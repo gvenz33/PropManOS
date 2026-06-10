@@ -17,6 +17,7 @@ export default async function OwnerHomePage() {
   const propIds = (props ?? []).map((p) => p.id);
   let unitCount = 0;
   let openInvoices = 0;
+  let openRepairs = 0;
   if (propIds.length) {
     const { count: u } = await supabase
       .from("units")
@@ -35,6 +36,12 @@ export default async function OwnerHomePage() {
           .in("lease_id", leaseIds)
           .in("status", ["open", "late"]);
         openInvoices = inv ?? 0;
+        const { count: repairs } = await supabase
+          .from("repair_requests")
+          .select("*", { count: "exact", head: true })
+          .in("lease_id", leaseIds)
+          .in("status", ["submitted", "acknowledged", "in_progress"]);
+        openRepairs = repairs ?? 0;
       }
     }
   }
@@ -64,11 +71,12 @@ export default async function OwnerHomePage() {
           </Link>
         </section>
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Properties", value: propCount ?? 0, href: "/dashboard/owner/properties" },
           { label: "Units", value: unitCount, href: "/dashboard/owner/properties" },
           { label: "Open / late invoices", value: openInvoices, href: "/dashboard/owner/invoices" },
+          { label: "Open maintenance", value: openRepairs, href: "/dashboard/owner/repairs" },
         ].map((c) => (
           <Link
             key={c.label}
