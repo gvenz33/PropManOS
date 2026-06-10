@@ -1,6 +1,7 @@
 "use server";
 
 import { BRAND } from "@/lib/brand";
+import { formatUnitAddress, upsertTenantCrmContact } from "@/lib/crm";
 import { documentKindLabel } from "@/lib/documents";
 import { parseDollarsToCents } from "@/lib/money";
 import { isRepairPriority, isRepairStatus } from "@/lib/repair-requests";
@@ -194,9 +195,16 @@ export async function updateTenantNotifications(formData: FormData): Promise<voi
 
 export async function createLease(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   const unitId = String(formData.get("unit_id") ?? "");
   const propertyId = String(formData.get("property_id") ?? "");
   const tenantEmail = String(formData.get("tenant_email") ?? "").trim().toLowerCase();
+  const tenantName = String(formData.get("tenant_name") ?? "").trim();
+  const tenantPhone = String(formData.get("tenant_phone") ?? "").trim() || null;
   const start = String(formData.get("start_date") ?? "");
   const rent = parseDollarsToCents(formData.get("rent_amount_dollars"));
 
@@ -216,8 +224,8 @@ export async function createLease(formData: FormData): Promise<void> {
   const { error } = await supabase.from("leases").insert({
     unit_id: unitId,
     tenant_email: tenantEmail,
-    tenant_name: String(formData.get("tenant_name") ?? "").trim() || null,
-    tenant_phone: String(formData.get("tenant_phone") ?? "").trim() || null,
+    tenant_name: tenantName || null,
+    tenant_phone: tenantPhone,
     rent_amount_cents: rent,
     start_date: start,
     end_date: String(formData.get("end_date") ?? "").trim() || null,
@@ -226,7 +234,24 @@ export async function createLease(formData: FormData): Promise<void> {
   if (error) {
     redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
   }
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("name, address_line1, city, state, postal_code")
+    .eq("id", propertyId)
+    .maybeSingle();
+  const { data: unit } = await supabase.from("units").select("label").eq("id", unitId).maybeSingle();
+  if (property && unit) {
+    await upsertTenantCrmContact(supabase, user.id, {
+      name: tenantName || tenantEmail,
+      email: tenantEmail,
+      phone: tenantPhone,
+      address: formatUnitAddress(property, unit.label),
+    });
+  }
+
   revalidatePath(propertyPath(propertyId));
+  revalidatePath("/dashboard/owner/crm");
   redirect(propertyPath(propertyId, "success=lease", unitsSection));
 }
 
@@ -539,10 +564,81 @@ export async function createCrmContact(formData: FormData): Promise<void> {
     name,
     email: String(formData.get("email") ?? "").trim() || null,
     phone: String(formData.get("phone") ?? "").trim() || null,
+    address: String(formData.get("address") ?? "").trim() || null,
     notes: String(formData.get("notes") ?? "").trim() || null,
   });
   if (error) return;
   revalidatePath("/dashboard/owner/crm");
+}
+
+export async function deleteDocument(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const documentId = String(formData.get("document_id") ?? "").trim();
+  const propertyId = String(formData.get("property_id") ?? "").trim() || null;
+
+  if (!documentId) {
+    redirect(propertiesPath(`error=${encodeURIComponent("Missing document.")}`));
+  }
+
+  const { data: doc } = await supabase
+    .from("documents")
+    .select("id, storage_path, property_id, unit_id, lease_id")
+    .eq("id", documentId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (!doc) {
+    if (propertyId) {
+      redirect(propertyPath(propertyId, `error=${encodeURIComponent("Document not found.")}`, unitsSection));
+    }
+    redirect(`/dashboard/owner/documents?error=${encodeURIComponent("Document not found.")}`);
+  }
+
+  const { error: storageError } = await supabase.storage
+    .from(PROP_MAN_STORAGE_BUCKET)
+    .remove([doc.storage_path]);
+  if (storageError) {
+    const msg = storageError.message;
+    if (propertyId || doc.property_id) {
+      redirect(
+        propertyPath(
+          propertyId ?? doc.property_id!,
+          `error=${encodeURIComponent(msg)}`,
+          unitsSection,
+        ),
+      );
+    }
+    redirect(`/dashboard/owner/documents?error=${encodeURIComponent(msg)}`);
+  }
+
+  const { error } = await supabase.from("documents").delete().eq("id", documentId);
+  if (error) {
+    if (propertyId || doc.property_id) {
+      redirect(
+        propertyPath(
+          propertyId ?? doc.property_id!,
+          `error=${encodeURIComponent(error.message)}`,
+          unitsSection,
+        ),
+      );
+    }
+    redirect(`/dashboard/owner/documents?error=${encodeURIComponent(error.message)}`);
+  }
+
+  const resolvedPropertyId = propertyId ?? doc.property_id;
+  revalidatePath("/dashboard/owner/documents");
+  if (resolvedPropertyId) {
+    revalidatePath(propertyPath(resolvedPropertyId));
+    if (doc.unit_id) revalidatePath(unitPath(resolvedPropertyId, doc.unit_id));
+    if (doc.lease_id) revalidatePath(tenantPath(resolvedPropertyId, doc.lease_id));
+    redirect(propertyPath(resolvedPropertyId, "success=doc-deleted", unitsSection));
+  }
+  redirect("/dashboard/owner/documents?success=doc-deleted");
 }
 
 export async function createCrmActivity(formData: FormData): Promise<void> {

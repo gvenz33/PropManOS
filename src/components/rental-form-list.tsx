@@ -1,3 +1,5 @@
+import { deleteDocument } from "@/app/dashboard/actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { documentKindLabel } from "@/lib/documents";
 import Link from "next/link";
 import { SendRentalForm, type FormRecipient } from "./send-rental-form";
@@ -51,6 +53,17 @@ export function RentalFormList({
                 propertyId={propertyId}
                 recipients={recipients}
               />
+              <form>
+                <input type="hidden" name="document_id" value={form.id} />
+                <input type="hidden" name="property_id" value={propertyId} />
+                <ConfirmSubmitButton
+                  formAction={deleteDocument}
+                  message={`Delete "${form.filename}"? This cannot be undone.`}
+                  className="rounded-lg border border-[var(--danger)]/40 px-3 py-1.5 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--danger)]/10"
+                >
+                  Delete
+                </ConfirmSubmitButton>
+              </form>
             </div>
           </div>
         </li>

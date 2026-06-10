@@ -7,8 +7,10 @@ import {
   updateUnitPayments,
 } from "@/app/dashboard/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { DocumentList } from "@/components/document-list";
+import { DocumentUpload } from "@/components/document-upload";
+import { PROFILE_DOCUMENT_KINDS, kindOptionsFrom } from "@/lib/documents";
 import { formatCentsAsDollars } from "@/lib/money";
-import Link from "next/link";
 import { useState } from "react";
 import { AddTenantModal } from "./add-tenant-modal";
 
@@ -21,6 +23,13 @@ export type PropertyUnitLease = {
   linked: boolean;
 };
 
+export type PropertyUnitDocument = {
+  id: string;
+  filename: string;
+  kind: string;
+  created_at: string;
+};
+
 export type PropertyUnitCardData = {
   id: string;
   label: string;
@@ -31,6 +40,7 @@ export type PropertyUnitCardData = {
   cashapp_handle: string | null;
   payment_instructions: string | null;
   activeLeases: PropertyUnitLease[];
+  documents: PropertyUnitDocument[];
 };
 
 type Props = {
@@ -49,6 +59,7 @@ export function PropertyUnitCard({
   const [addTenantOpen, setAddTenantOpen] = useState(false);
   const defaultRent = (unit.rent_amount_cents / 100).toFixed(2);
   const tenantCount = unit.activeLeases.length;
+  const primaryLeaseId = unit.activeLeases.length === 1 ? unit.activeLeases[0].id : undefined;
 
   return (
     <>
@@ -62,8 +73,9 @@ export function PropertyUnitCard({
                 ? ` · Late fee ${formatCentsAsDollars(unit.late_fee_cents)}`
                 : ""}
               {tenantCount
-                ? ` · ${tenantCount} tenant${tenantCount === 1 ? "" : "s"}`
+                ? ` · ${unit.activeLeases.map((l) => l.displayName ?? l.tenant_email).join(", ")}`
                 : " · Vacant"}
+              {unit.documents.length ? ` · ${unit.documents.length} file${unit.documents.length === 1 ? "" : "s"}` : ""}
             </p>
           </div>
           <span className="property-unit-chevron" aria-hidden>
@@ -72,13 +84,7 @@ export function PropertyUnitCard({
         </summary>
 
         <div className="border-t border-[var(--border)] px-5 pb-5 pt-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <Link
-              href={`/dashboard/owner/properties/${propertyId}/units/${unit.id}`}
-              className="text-sm font-semibold text-[var(--brand-blue)] hover:underline"
-            >
-              Unit profile →
-            </Link>
+          <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => setAddTenantOpen(true)}
@@ -135,12 +141,7 @@ export function PropertyUnitCard({
           </form>
 
           <div className="mt-6 border-t border-[var(--border)] pt-4">
-            <h4 className="text-sm font-semibold">Tenants</h4>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              Contact info only — rent and lease dates live on the{" "}
-              <span className="font-medium">tenant profile</span>.
-            </p>
-
+            <h4 className="text-sm font-semibold">Tenant</h4>
             <ul className="mt-3 space-y-3">
               {unit.activeLeases.map((lease) => (
                 <li
@@ -148,15 +149,7 @@ export function PropertyUnitCard({
                   className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4"
                 >
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium">{lease.displayName ?? lease.tenant_email}</p>
-                      <Link
-                        href={`/dashboard/owner/properties/${propertyId}/tenants/${lease.id}`}
-                        className="text-xs text-[var(--brand-blue)] hover:underline"
-                      >
-                        Lease & documents →
-                      </Link>
-                    </div>
+                    <p className="font-medium">{lease.displayName ?? lease.tenant_email}</p>
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         lease.linked
@@ -227,6 +220,30 @@ export function PropertyUnitCard({
                 </li>
               ) : null}
             </ul>
+          </div>
+
+          <div className="mt-6 border-t border-[var(--border)] pt-4">
+            <h4 className="text-sm font-semibold">Unit documents</h4>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Leases, agreements, and private files for this unit only — stored under Unit {unit.label}.
+            </p>
+            <div className="mt-3">
+              <DocumentList
+                docs={unit.documents}
+                deletable
+                propertyId={propertyId}
+                emptyMessage="No documents for this unit yet."
+              />
+            </div>
+            <DocumentUpload
+              propertyId={propertyId}
+              unitId={unit.id}
+              leaseId={primaryLeaseId}
+              category="internal"
+              title="Upload document"
+              kindOptions={kindOptionsFrom(PROFILE_DOCUMENT_KINDS)}
+              compact
+            />
           </div>
         </div>
       </details>

@@ -1,5 +1,4 @@
 import { ActionMessage } from "@/components/action-message";
-import { DocumentList } from "@/components/document-list";
 import { DocumentUpload } from "@/components/document-upload";
 import {
   PropertyUnitCard,
@@ -7,7 +6,7 @@ import {
 } from "@/components/properties/property-unit-card";
 import { RentalFormList } from "@/components/rental-form-list";
 import type { FormRecipient } from "@/components/send-rental-form";
-import { INTERNAL_DOCUMENT_KINDS, RENTAL_FORM_KINDS, kindOptionsFrom } from "@/lib/documents";
+import { RENTAL_FORM_KINDS, kindOptionsFrom } from "@/lib/documents";
 import { displayTenantName, displayTenantPhone, type LeaseRow } from "@/lib/leases";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -66,12 +65,21 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
     created_at: string;
   };
 
-  const { data: internalDocs } = await supabase
+  const { data: unitScopedDocs } = await supabase
     .from("documents")
-    .select("id, filename, kind, created_at")
+    .select("id, filename, kind, created_at, unit_id")
     .eq("property_id", id)
     .eq("category", "internal")
+    .not("unit_id", "is", null)
     .order("created_at", { ascending: false });
+
+  const docsByUnit = new Map<string, PropertyDoc[]>();
+  for (const doc of unitScopedDocs ?? []) {
+    if (!doc.unit_id) continue;
+    const list = docsByUnit.get(doc.unit_id) ?? [];
+    list.push(doc);
+    docsByUnit.set(doc.unit_id, list);
+  }
 
   const { data: rentalForms } = await supabase
     .from("documents")
@@ -107,6 +115,7 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
         displayPhone: displayTenantPhone(l),
         linked: Boolean(l.tenant_id),
       })),
+    documents: docsByUnit.get(u.id) ?? [],
   }));
 
   const formRecipients: FormRecipient[] = [
@@ -200,9 +209,9 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
 
       <section id="units-tenants" className="scroll-mt-8 space-y-6">
         <div>
-          <h2 className="text-lg font-semibold">Units & tenants</h2>
+          <h2 className="text-lg font-semibold">Units</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Add rental units, assign tenants, and manage leases for this property.
+            Expand a unit to manage the tenant, payment methods, and documents for that unit.
           </p>
         </div>
 
@@ -315,27 +324,6 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
           </p>
         ) : null}
       </div>
-      </section>
-
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Internal files</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Private landlord records for this property — insurance, permits, notes, and other files
-          tenants never see.
-        </p>
-        <div className="mt-4">
-          <DocumentList
-            docs={(internalDocs ?? []) as PropertyDoc[]}
-            emptyMessage="No internal files yet."
-          />
-        </div>
-        <DocumentUpload
-          propertyId={id}
-          category="internal"
-          title="Upload internal file"
-          kindOptions={kindOptionsFrom(INTERNAL_DOCUMENT_KINDS)}
-          compact
-        />
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">

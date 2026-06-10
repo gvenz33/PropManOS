@@ -25,13 +25,6 @@ export default async function OwnerDocumentsPage() {
     .eq("category", "rental_form")
     .order("created_at", { ascending: false });
 
-  function propertyLabel(
-    properties: { name: string } | { name: string }[] | null | undefined,
-  ) {
-    const row = Array.isArray(properties) ? properties[0] : properties;
-    return row?.name ? ` · ${row.name}` : "";
-  }
-
   return (
     <div className="space-y-10">
       <div>
@@ -46,37 +39,12 @@ export default async function OwnerDocumentsPage() {
         <div>
           <h2 className="text-lg font-semibold">Internal files</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Private records — never shared with tenants.
+            Portfolio-wide private records. Unit files (leases, agreements) live on each property unit
+            card.
           </p>
         </div>
         <OwnerInternalUpload />
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-          <ul className="divide-y divide-[var(--border)]">
-            {(internalDocs ?? []).map((d) => {
-              const props = d.properties as { name: string } | { name: string }[] | null;
-              return (
-                <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-                  <div>
-                    <p className="font-medium">{d.filename}</p>
-                    <p className="text-xs text-[var(--muted)]">
-                      {d.kind}
-                      {propertyLabel(props)} · {new Date(d.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                  <a
-                    href={`/api/documents/${d.id}/download`}
-                    className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold hover:bg-[var(--muted-bg)]"
-                  >
-                    Download
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-          {!internalDocs?.length ? (
-            <p className="text-sm text-[var(--muted)]">No internal files yet.</p>
-          ) : null}
-        </div>
+        <DocumentList docs={internalDocs ?? []} deletable emptyMessage="No internal files yet." />
       </section>
 
       <section className="space-y-4">
@@ -88,7 +56,7 @@ export default async function OwnerDocumentsPage() {
           </p>
         </div>
         <OwnerRentalFormUpload />
-        <DocumentList docs={rentalForms ?? []} emptyMessage="No rental forms at portfolio level." />
+        <DocumentList docs={rentalForms ?? []} deletable emptyMessage="No rental forms at portfolio level." />
       </section>
 
       <p className="text-sm text-[var(--muted)]">

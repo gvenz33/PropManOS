@@ -48,6 +48,10 @@ export default async function OwnerCrmPage() {
               <input name="phone" type="tel" className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" />
             </div>
             <div>
+              <label className="text-sm font-medium">Address</label>
+              <input name="address" className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" />
+            </div>
+            <div>
               <label className="text-sm font-medium">Notes</label>
               <textarea name="notes" rows={3} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" />
             </div>
@@ -109,6 +113,7 @@ export default async function OwnerCrmPage() {
                 <p className="text-sm text-[var(--muted)]">
                   {[c.email, c.phone].filter(Boolean).join(" · ") || "—"}
                 </p>
+                {c.address ? <p className="mt-1 text-sm text-[var(--muted)]">{c.address}</p> : null}
                 {c.notes ? <p className="mt-2 text-sm text-[var(--muted)]">{c.notes}</p> : null}
               </li>
             ))}
