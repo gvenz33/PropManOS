@@ -101,7 +101,7 @@ export function BankConnectionCard({
     token: linkToken,
     onSuccess,
     onExit: (exit) => {
-      if (exit.error_display_message) {
+      if (exit?.error_display_message) {
         setError(exit.error_display_message);
       }
     },
