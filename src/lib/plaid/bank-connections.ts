@@ -117,19 +117,3 @@ export async function disconnectBankConnection(
 
   if (error) throw new Error(error.message);
 }
-
-export function formatBankLabel(connection: BankConnectionRow | null) {
-  if (!connection) return null;
-  const institution = connection.institution_name ?? "Bank";
-  const mask = connection.account_mask ? `••••${connection.account_mask}` : "";
-  const name = connection.account_name ?? "Account";
-  return `${institution} — ${name}${mask ? ` ${mask}` : ""}`;
-}
-
-export function formatBankLabel(connection: BankConnectionRow | null) {
-  if (!connection) return null;
-  const institution = connection.institution_name ?? "Bank";
-  const mask = connection.account_mask ? `••••${connection.account_mask}` : "";
-  const name = connection.account_name ?? "Account";
-  return `${institution} — ${name}${mask ? ` ${mask}` : ""}`;
-}

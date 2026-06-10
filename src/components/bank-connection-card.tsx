@@ -1,6 +1,6 @@
 "use client";
 
-import { formatBankLabel } from "@/lib/plaid/transfers";
+import { formatBankLabel } from "@/lib/plaid/format-bank-label";
 import type { BankConnectionRow } from "@/lib/plaid/bank-connections";
 import type { BankConnectionPurpose } from "@/lib/plaid/client";
 import { useCallback, useEffect, useState } from "react";
