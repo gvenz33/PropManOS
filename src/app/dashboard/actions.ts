@@ -3,6 +3,7 @@
 import { BRAND } from "@/lib/brand";
 import { documentKindLabel } from "@/lib/documents";
 import { parseDollarsToCents } from "@/lib/money";
+import { isRepairPriority, isRepairStatus } from "@/lib/repair-requests";
 import { sendEmail, sendSms } from "@/lib/notifications/outbound";
 import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -731,4 +732,75 @@ ${signed.signedUrl}
 
   revalidatePath(propertyPath(propertyId));
   return { sent };
+}
+
+export async function createRepairRequest(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const leaseId = String(formData.get("lease_id") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim() || null;
+  const priority = String(formData.get("priority") ?? "normal");
+
+  if (!leaseId || !title || !description) {
+    redirect(
+      `/dashboard/tenant/repairs?error=${encodeURIComponent("Title and description are required.")}`,
+    );
+  }
+  if (!isRepairPriority(priority)) {
+    redirect(`/dashboard/tenant/repairs?error=${encodeURIComponent("Invalid priority.")}`);
+  }
+
+  const { data: lease } = await supabase
+    .from("leases")
+    .select("id")
+    .eq("id", leaseId)
+    .eq("tenant_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!lease) {
+    redirect(`/dashboard/tenant/repairs?error=${encodeURIComponent("Invalid lease selected.")}`);
+  }
+
+  const { error } = await supabase.from("repair_requests").insert({
+    lease_id: leaseId,
+    tenant_id: user.id,
+    title,
+    description,
+    location,
+    priority,
+  });
+
+  if (error) {
+    redirect(`/dashboard/tenant/repairs?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard/tenant/repairs");
+  revalidatePath("/dashboard/owner/repairs");
+  redirect("/dashboard/tenant/repairs?success=submitted");
+}
+
+export async function updateRepairRequestStatus(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const id = String(formData.get("repair_request_id") ?? "").trim();
+  const status = String(formData.get("status") ?? "").trim();
+
+  if (!id || !isRepairStatus(status)) return;
+
+  const { error } = await supabase.from("repair_requests").update({ status }).eq("id", id);
+  if (error) return;
+
+  revalidatePath("/dashboard/owner/repairs");
+  revalidatePath("/dashboard/tenant/repairs");
 }

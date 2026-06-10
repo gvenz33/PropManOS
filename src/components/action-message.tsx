@@ -13,6 +13,7 @@ const successCopy: Record<string, string> = {
   updated: "Property updated.",
   payments: "Payment methods saved.",
   settings: "Notification preferences saved.",
+  submitted: "Maintenance request submitted.",
 };
 
 export function ActionMessage({ success, error }: Props) {

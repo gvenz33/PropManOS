@@ -10,6 +10,7 @@ const links = [
   { href: "/dashboard/owner/invoices", label: "Rent & late fees" },
   { href: "/dashboard/owner/payments", label: "Bank account" },
   { href: "/dashboard/owner/documents", label: "Documents" },
+  { href: "/dashboard/owner/repairs", label: "Maintenance" },
   { href: "/dashboard/owner/crm", label: "CRM" },
   { href: "/dashboard/owner/faq", label: "Landlord FAQ" },
 ];
