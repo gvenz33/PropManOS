@@ -1,6 +1,5 @@
-import { BRAND } from "@/lib/brand";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signOutAction } from "../actions";
 
@@ -11,6 +10,7 @@ const links = [
   { href: "/dashboard/owner/payments", label: "Bank account" },
   { href: "/dashboard/owner/documents", label: "Documents" },
   { href: "/dashboard/owner/repairs", label: "Maintenance" },
+  { href: "/dashboard/owner/reports", label: "Owner reports" },
   { href: "/dashboard/owner/crm", label: "CRM" },
   { href: "/dashboard/owner/faq", label: "Landlord FAQ" },
 ];
@@ -36,40 +36,19 @@ export default async function OwnerLayout({
   if (profile?.role !== "owner") redirect("/dashboard/tenant");
 
   return (
-    <div className="min-h-full bg-[var(--background)]">
-      <div className="border-b border-[var(--border)] bg-[var(--card)]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-              {BRAND.name}
-            </p>
-            <p className="font-semibold text-[var(--foreground)]">
-              {profile.full_name || user.email}
-            </p>
-            <p className="text-xs text-[var(--muted)]">Landlord / PM workspace</p>
-          </div>
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--muted-bg)]"
-            >
-              Sign out
-            </button>
-          </form>
-        </div>
-        <nav className="mx-auto flex max-w-6xl flex-wrap gap-1 px-4 pb-3 sm:px-6">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--muted-bg)] hover:text-[var(--foreground)]"
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
-    </div>
+    <DashboardShell
+      portalLabel="Landlord / PM workspace"
+      userName={profile.full_name || user.email || "Account"}
+      links={links}
+      signOut={
+        <form action={signOutAction}>
+          <button type="submit" className="dashboard-signout">
+            Sign out
+          </button>
+        </form>
+      }
+    >
+      {children}
+    </DashboardShell>
   );
 }

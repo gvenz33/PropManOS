@@ -7,6 +7,8 @@ type BrandLogoProps = {
   href?: string;
   className?: string;
   priority?: boolean;
+  /** Light circular badge behind icon — useful on dark footers */
+  iconBadge?: boolean;
 };
 
 export function BrandLogo({
@@ -14,20 +16,38 @@ export function BrandLogo({
   href = "/",
   className = "",
   priority = false,
+  iconBadge = false,
 }: BrandLogoProps) {
   const isIcon = variant === "icon";
   const src = isIcon ? BRAND.icon : BRAND.logo;
-  const width = isIcon ? 44 : 280;
-  const height = isIcon ? 44 : 80;
+  const width = isIcon ? 48 : 280;
+  const height = isIcon ? 48 : 80;
 
-  const image = (
+  const image = isIcon ? (
+    <span
+      className={
+        iconBadge
+          ? "brand-icon-badge inline-flex h-12 w-12 items-center justify-center"
+          : "inline-flex h-12 w-12 items-center justify-center"
+      }
+    >
+      <Image
+        src={src}
+        alt={BRAND.name}
+        width={width}
+        height={height}
+        priority={priority}
+        className="h-10 w-10 object-contain"
+      />
+    </span>
+  ) : (
     <Image
       src={src}
       alt={BRAND.name}
       width={width}
       height={height}
       priority={priority}
-      className={isIcon ? "rounded-full" : "h-auto w-auto max-h-16 sm:max-h-20"}
+      className="h-auto w-auto max-h-16 sm:max-h-20"
     />
   );
 

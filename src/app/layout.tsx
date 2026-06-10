@@ -20,8 +20,11 @@ export const metadata: Metadata = {
   },
   description: BRAND.description,
   icons: {
-    icon: [{ url: "/got-my-rent-icon.png", type: "image/png" }],
-    shortcut: "/got-my-rent-icon.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/got-my-rent-icon.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
     apple: "/got-my-rent-icon.png",
   },
 };

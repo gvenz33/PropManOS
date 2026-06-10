@@ -1,3 +1,4 @@
+import { DashboardPageHeader } from "@/components/dashboard/page-header";
 import { PaymentInstructions } from "@/components/payment-instructions";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -37,14 +38,12 @@ export default async function TenantHomePage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Your home</h1>
-        <p className="mt-1 text-[var(--muted)]">
-          Pay rent with Zelle or Cash App, review notices, and keep documents in one place.
-        </p>
-      </div>
+      <DashboardPageHeader
+        title="Your home"
+        description="Pay rent, track charges, submit maintenance requests, and keep documents in one place."
+      />
 
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+      <section className="dashboard-panel">
         <h2 className="text-lg font-semibold">Active leases</h2>
         <ul className="mt-4 space-y-3">
           {(leases ?? []).map((l) => {
@@ -61,7 +60,10 @@ export default async function TenantHomePage() {
             const p = Array.isArray(pRaw) ? pRaw[0] ?? null : pRaw ?? null;
             const u = row && p ? { ...row, properties: p } : null;
             return (
-              <li key={l.id}>
+              <li
+                key={l.id}
+                className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3"
+              >
                 <p className="font-medium">
                   {u?.properties?.name ?? "Property"} · Unit {u?.label ?? "—"}
                 </p>
@@ -78,10 +80,10 @@ export default async function TenantHomePage() {
         </ul>
       </section>
 
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+      <section className="dashboard-panel">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold">Upcoming charges</h2>
-          <Link href="/dashboard/tenant/invoices" className="text-sm text-[var(--accent)] hover:underline">
+          <Link href="/dashboard/tenant/invoices" className="text-sm font-semibold text-[var(--brand-blue)] hover:underline">
             View all
           </Link>
         </div>
@@ -103,10 +105,13 @@ export default async function TenantHomePage() {
             const total = inv.amount_cents + late;
             const periodLabel = `${inv.period_year}-${String(inv.period_month).padStart(2, "0")}`;
             return (
-              <li key={inv.id} className="space-y-3 border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+              <li
+                key={inv.id}
+                className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4"
+              >
                 <div className="flex flex-wrap justify-between gap-2 text-sm">
                   <span className="font-medium">{periodLabel}</span>
-                  <span className="font-semibold">{formatMoney(total)}</span>
+                  <span className="text-lg font-bold tabular-nums">{formatMoney(total)}</span>
                 </div>
                 <p className="text-sm text-[var(--muted)]">
                   Due {inv.due_date} · <span className="capitalize">{inv.status}</span>
@@ -123,17 +128,30 @@ export default async function TenantHomePage() {
             );
           })}
           {openInv?.length === 0 ? (
-            <li className="text-[var(--muted)]">You&apos;re all caught up — no open invoices.</li>
+            <li className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-dim)]/40 px-4 py-6 text-center text-[var(--foreground)]">
+              You&apos;re all caught up — no open invoices.
+            </li>
           ) : null}
         </ul>
         <p className="mt-4 text-sm text-[var(--muted)]">
           Manage text and email reminders in{" "}
-          <Link href="/dashboard/tenant/settings" className="text-[var(--accent)] hover:underline">
+          <Link href="/dashboard/tenant/settings" className="font-medium text-[var(--brand-blue)] hover:underline">
             notification settings
           </Link>
           .
         </p>
       </section>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link href="/dashboard/tenant/repairs" className="dashboard-panel block transition hover:-translate-y-0.5">
+          <h3 className="font-semibold">Maintenance</h3>
+          <p className="mt-2 text-sm text-[var(--muted)]">Submit a repair request for your unit.</p>
+        </Link>
+        <Link href="/dashboard/tenant/documents" className="dashboard-panel block transition hover:-translate-y-0.5">
+          <h3 className="font-semibold">Documents</h3>
+          <p className="mt-2 text-sm text-[var(--muted)]">Leases, notices, and shared files.</p>
+        </Link>
+      </div>
     </div>
   );
 }

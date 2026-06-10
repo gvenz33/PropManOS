@@ -21,7 +21,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
-            <BrandLogo href={undefined} variant="icon" className="mb-4" />
+            <BrandLogo href={undefined} variant="icon" iconBadge className="mb-4" />
             <p className="text-lg font-semibold">{BRAND.name}</p>
             <p className="mt-2 max-w-sm text-sm text-white/70">
               {BRAND.tagline} — {BRAND.description}

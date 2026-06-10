@@ -8,32 +8,32 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Features",
-  description: `Explore ${BRAND.name} features — rent collection, maintenance, documents, and more for independent landlords.`,
+  description: `Explore ${BRAND.name} features — rent collection, maintenance, owner reports, and more.`,
 };
 
-const yardiComparison = [
-  { feature: "Easy setup", yardi: true, us: true },
-  { feature: "Online payments (ACH, cards)", yardi: true, us: true },
-  { feature: "Online maintenance requests", yardi: true, us: true },
-  { feature: "Email & text communications", yardi: true, us: true },
-  { feature: "Tenant / resident portal", yardi: true, us: true },
-  { feature: "Document management", yardi: true, us: true },
-  { feature: "Prospect / CRM tracking", yardi: true, us: true },
-  { feature: "Vacancy tracking", yardi: true, us: "partial" as const },
-  { feature: "Full property accounting (GL)", yardi: true, us: false },
-  { feature: "Online rental applications", yardi: true, us: false },
-  { feature: "Resident screening", yardi: true, us: false },
-  { feature: "Listing syndication (ILS)", yardi: true, us: false },
-  { feature: "Online lease signing", yardi: true, us: false },
-  { feature: "Vendor payments", yardi: true, us: false },
-  { feature: "Owner financial statements", yardi: true, us: false },
+const platformComparison = [
+  { feature: "Easy setup", included: true },
+  { feature: "Online payments (ACH, Zelle, Cash App)", included: true },
+  { feature: "Online maintenance requests", included: true },
+  { feature: "Email & text communications", included: true },
+  { feature: "Tenant portal", included: true },
+  { feature: "Monthly owner Excel reports", included: true },
+  { feature: "Document management", included: true },
+  { feature: "Prospect / CRM tracking", included: true },
+  { feature: "Vacancy tracking", included: "partial" as const },
+  { feature: "Full general ledger accounting", included: false },
+  { feature: "Online rental applications", included: false },
+  { feature: "Resident screening", included: false },
+  { feature: "Listing syndication", included: false },
+  { feature: "Online lease signing", included: false },
+  { feature: "Vendor payments", included: false },
 ];
 
 function CellValue({ value }: { value: boolean | "partial" }) {
   if (value === true) {
     return (
       <span className="inline-flex items-center gap-1 font-medium text-[var(--accent)]">
-        <FeatureIcon name="check" className="h-4 w-4" /> Yes
+        <FeatureIcon name="check" className="h-4 w-4" /> Included
       </span>
     );
   }
@@ -49,7 +49,7 @@ export default function FeaturesPage() {
       <PageHero
         eyebrow="Features"
         title="Everything you need to manage rentals — without enterprise complexity"
-        description={`${BRAND.name} covers the essentials independent landlords use every day. We studied platforms like Yardi Breeze and focused on rent, maintenance, documents, and communication first.`}
+        description={`${BRAND.name} covers rent collection, maintenance, documents, owner reporting, and tenant communication for independent landlords and property managers.`}
       />
 
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
@@ -68,34 +68,27 @@ export default function FeaturesPage() {
 
       <section className="marketing-section-alt border-y border-[var(--border)] py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-2xl font-bold tracking-tight">
-            How we compare to Yardi Breeze
-          </h2>
+          <h2 className="text-2xl font-bold tracking-tight">What&apos;s included today</h2>
           <p className="mt-2 max-w-3xl text-[var(--muted)]">
-            Yardi Breeze is a strong all-in-one platform starting around $1/unit/month with
-            minimums. {BRAND.name} is built for smaller portfolios that want core operations
-            without a full accounting suite — yet.
+            A focused toolkit for small portfolios — rent, maintenance, documents, and owner
+            reporting without bloated accounting suites.
           </p>
           <div className="mt-8 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-[var(--border)] bg-[var(--muted-bg)]">
                 <tr>
                   <th className="px-6 py-4 font-semibold">Feature</th>
-                  <th className="px-6 py-4 font-semibold">Yardi Breeze</th>
                   <th className="px-6 py-4 font-semibold text-[var(--brand-blue)]">
                     {BRAND.name}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {yardiComparison.map((row) => (
+                {platformComparison.map((row) => (
                   <tr key={row.feature} className="border-b border-[var(--border)] last:border-0">
                     <td className="px-6 py-4">{row.feature}</td>
                     <td className="px-6 py-4">
-                      <CellValue value={row.yardi} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <CellValue value={row.us} />
+                      <CellValue value={row.included} />
                     </td>
                   </tr>
                 ))}
@@ -108,8 +101,7 @@ export default function FeaturesPage() {
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-2xl font-bold tracking-tight">On our roadmap</h2>
         <p className="mt-2 max-w-3xl text-[var(--muted)]">
-          Based on what leading platforms like Yardi Breeze offer, these are the next capabilities
-          we&apos;re considering. Tell us what matters most on the{" "}
+          Tell us what matters most on the{" "}
           <Link href="/contact" className="text-[var(--brand-blue)] hover:underline">
             contact page
           </Link>

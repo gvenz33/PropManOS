@@ -96,8 +96,8 @@ export default async function HomePage({
             Intuitive tools for rent, maintenance, and records
           </h2>
           <p className="mt-4 text-[var(--muted)]">
-            Everything you need to run a small portfolio — inspired by platforms like Yardi Breeze,
-            built for landlords who want simplicity first.
+            Everything you need to run a small portfolio — rent collection, maintenance, owner
+            reports, and records in one place.
           </p>
         </div>
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -224,8 +224,8 @@ export default async function HomePage({
           </p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight">Simple, transparent pricing</h2>
           <p className="mt-4 text-[var(--muted)]">
-            Yardi Breeze starts at $1/unit/month with minimums. We&apos;re focused on indie
-            landlords during early access.
+            No per-unit minimums during early access. We&apos;re focused on indie landlords
+            and property managers.
           </p>
         </div>
         <div className="mt-12 grid gap-6 lg:grid-cols-2">

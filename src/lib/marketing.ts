@@ -3,14 +3,14 @@ import { BRAND } from "@/lib/brand";
 export type MarketingFeature = {
   title: string;
   body: string;
-  icon: "portfolio" | "payments" | "maintenance" | "notices" | "documents" | "crm" | "fees" | "portal";
+  icon: "portfolio" | "payments" | "maintenance" | "notices" | "documents" | "crm" | "fees" | "portal" | "reports";
 };
 
 export const heroFeatures = [
   "Online rent collection",
   "Maintenance requests",
   "Email & text reminders",
-  "Tenant & landlord portals",
+  "Owner monthly reports",
 ] as const;
 
 export const marketingFeatures: MarketingFeature[] = [
@@ -40,14 +40,14 @@ export const marketingFeatures: MarketingFeature[] = [
     body: "Upload leases, notices, and rental forms. Send documents to prospects or tenants with signed links.",
   },
   {
+    icon: "reports",
+    title: "Owner monthly reports",
+    body: "Generate styled Excel summaries by property and unit, then email the final report to property owners.",
+  },
+  {
     icon: "crm",
     title: "Prospect tracking",
     body: "Lightweight CRM for owners, prospects, and vendors alongside your active tenant roster.",
-  },
-  {
-    icon: "fees",
-    title: "Late fees you control",
-    body: "Apply late rules automatically and waive fees with one click when you choose to.",
   },
   {
     icon: "portal",
@@ -59,8 +59,8 @@ export const marketingFeatures: MarketingFeature[] = [
 export const landlordHighlights = [
   "Add properties, units, and tenants in minutes",
   "Generate monthly rent invoices automatically",
+  "Export Excel owner summaries and email them",
   "See open invoices and maintenance at a glance",
-  "Send rental forms by email or text",
 ] as const;
 
 export const tenantHighlights = [
@@ -76,12 +76,11 @@ export const comparisonRows = [
   { feature: "Online rent payments", gotMyRent: true, spreadsheets: false },
   { feature: "Maintenance requests", gotMyRent: true, spreadsheets: false },
   { feature: "Email & SMS reminders", gotMyRent: true, spreadsheets: false },
+  { feature: "Monthly owner Excel reports", gotMyRent: true, spreadsheets: false },
   { feature: "Document storage & sharing", gotMyRent: true, spreadsheets: false },
   { feature: "Prospect / CRM tracking", gotMyRent: true, spreadsheets: false },
-  { feature: "Full general ledger accounting", gotMyRent: false, spreadsheets: false },
 ] as const;
 
-/** Features Yardi Breeze offers that we don't yet — honest roadmap for the features page */
 export const roadmapFeatures = [
   {
     title: "Online rental applications",
@@ -94,18 +93,13 @@ export const roadmapFeatures = [
     status: "planned" as const,
   },
   {
-    title: "Owner financial reports",
-    body: "Customizable income statements and owner payout summaries.",
-    status: "planned" as const,
-  },
-  {
-    title: "Listing syndication (ILS)",
-    body: "Post vacancies to Zillow, Apartments.com, and similar sites.",
+    title: "Listing syndication",
+    body: "Post vacancies to major rental listing sites from one place.",
     status: "planned" as const,
   },
   {
     title: "Online lease signing",
-    body: "E-sign state-based lease documents in the tenant portal.",
+    body: "E-sign lease documents in the tenant portal.",
     status: "planned" as const,
   },
   {
@@ -132,22 +126,22 @@ export const pricingTiers = [
       "Tenant & landlord portals",
       "ACH, Zelle & Cash App payments",
       "Maintenance requests",
-      "Email & SMS rent reminders",
+      "Monthly owner Excel reports",
     ],
     cta: "Get started free",
     href: "/sign-up",
     featured: true,
   },
   {
-    name: "Compare to Yardi Breeze",
-    price: "From $1",
-    period: "per unit / month (their pricing)",
-    description: `${BRAND.name} is built for indie landlords who want core tools without enterprise minimums.`,
+    name: "Built for indie landlords",
+    price: "Simple",
+    period: "transparent pricing ahead",
+    description: `${BRAND.name} focuses on rent collection, maintenance, and owner reporting without enterprise minimums.`,
     highlights: [
-      "No $100+/mo minimums",
-      "No annual contract required",
+      "No long-term contracts",
+      "No per-unit minimums",
       "Focused on rent & operations",
-      "Transparent, simple setup",
+      "Fast setup",
     ],
     cta: "See all features",
     href: "/features",

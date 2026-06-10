@@ -1,7 +1,27 @@
-export async function sendEmail(to: string, subject: string, body: string) {
+type EmailAttachment = {
+  filename: string;
+  content: string;
+};
+
+export async function sendEmail(
+  to: string,
+  subject: string,
+  body: string,
+  attachments?: EmailAttachment[],
+) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.NOTIFICATIONS_FROM_EMAIL;
   if (!apiKey || !from) return { ok: false, error: "Email not configured." };
+
+  const payload: Record<string, unknown> = {
+    from,
+    to: [to],
+    subject,
+    text: body,
+  };
+  if (attachments?.length) {
+    payload.attachments = attachments;
+  }
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -9,12 +29,7 @@ export async function sendEmail(to: string, subject: string, body: string) {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject,
-      text: body,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
