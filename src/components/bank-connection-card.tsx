@@ -100,10 +100,9 @@ export function BankConnectionCard({
   const { open, ready } = usePlaidLink({
     token: linkToken,
     onSuccess,
-    onExit: (exit) => {
-      if (exit?.error_display_message) {
-        setError(exit.error_display_message);
-      }
+    onExit: (error) => {
+      const message = error?.display_message ?? error?.error_message;
+      if (message) setError(message);
     },
   });
 
