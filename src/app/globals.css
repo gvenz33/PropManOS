@@ -243,3 +243,44 @@ body {
 .dashboard-signout:hover {
   background: var(--muted-bg);
 }
+
+.property-unit-accordion {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 1px 3px rgba(15, 41, 66, 0.06);
+  overflow: hidden;
+}
+
+.property-unit-summary {
+  display: flex;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  transition: background 0.15s;
+}
+
+.property-unit-summary::-webkit-details-marker {
+  display: none;
+}
+
+.property-unit-summary:hover {
+  background: var(--muted-bg);
+}
+
+.property-unit-chevron {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+
+.property-unit-accordion[open] .property-unit-chevron {
+  transform: rotate(180deg);
+}
+
+.property-modal::backdrop {
+  background: rgba(15, 41, 66, 0.45);
+}

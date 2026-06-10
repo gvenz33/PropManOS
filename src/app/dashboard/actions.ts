@@ -153,11 +153,19 @@ export async function updateUnitPayments(formData: FormData): Promise<void> {
     })
     .eq("id", unitId);
 
+  const returnToProperty = String(formData.get("return_to") ?? "") === "property";
+
   if (error) {
+    if (returnToProperty) {
+      redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`, unitsSection));
+    }
     redirect(unitPath(propertyId, unitId, `error=${encodeURIComponent(error.message)}`));
   }
   revalidatePath(propertyPath(propertyId));
   revalidatePath(unitPath(propertyId, unitId));
+  if (returnToProperty) {
+    redirect(propertyPath(propertyId, "success=payments", unitsSection));
+  }
   redirect(unitPath(propertyId, unitId, "success=payments"));
 }
 
@@ -220,6 +228,37 @@ export async function createLease(formData: FormData): Promise<void> {
   }
   revalidatePath(propertyPath(propertyId));
   redirect(propertyPath(propertyId, "success=lease", unitsSection));
+}
+
+export async function updateLeaseContact(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const leaseId = String(formData.get("lease_id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  const tenantEmail = String(formData.get("tenant_email") ?? "").trim().toLowerCase();
+
+  if (!leaseId || !propertyId) {
+    redirect(propertiesPath(`error=${encodeURIComponent("Missing lease information.")}`));
+  }
+  if (!tenantEmail) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent("Tenant email is required.")}`));
+  }
+
+  const { error } = await supabase
+    .from("leases")
+    .update({
+      tenant_email: tenantEmail,
+      tenant_name: String(formData.get("tenant_name") ?? "").trim() || null,
+      tenant_phone: String(formData.get("tenant_phone") ?? "").trim() || null,
+    })
+    .eq("id", leaseId)
+    .eq("status", "active");
+
+  if (error) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent(error.message)}`));
+  }
+  revalidatePath(propertyPath(propertyId));
+  revalidatePath(tenantPath(propertyId, leaseId));
+  redirect(propertyPath(propertyId, "success=lease-updated", unitsSection));
 }
 
 export async function updateLease(formData: FormData): Promise<void> {

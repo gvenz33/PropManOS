@@ -1,25 +1,18 @@
 import { ActionMessage } from "@/components/action-message";
-import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { DocumentList } from "@/components/document-list";
 import { DocumentUpload } from "@/components/document-upload";
+import {
+  PropertyUnitCard,
+  type PropertyUnitCardData,
+} from "@/components/properties/property-unit-card";
 import { RentalFormList } from "@/components/rental-form-list";
 import type { FormRecipient } from "@/components/send-rental-form";
 import { INTERNAL_DOCUMENT_KINDS, RENTAL_FORM_KINDS, kindOptionsFrom } from "@/lib/documents";
-import { formatCentsAsDollars } from "@/lib/money";
+import { displayTenantName, displayTenantPhone, type LeaseRow } from "@/lib/leases";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import {
-  createLease,
-  createUnit,
-  endLease,
-  removeTenantFromUnit,
-  updateLease,
-  updateProperty,
-  updateUnitPayments,
-} from "../../../actions";
-
-import { displayTenantName, displayTenantPhone, type LeaseRow } from "@/lib/leases";
+import { createUnit, updateProperty } from "../../../actions";
 
 type UnitRow = {
   id: string;
@@ -92,6 +85,29 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
     .select("id, name, email, phone")
     .eq("owner_id", user.id)
     .order("name");
+
+  const defaultStartDate = new Date().toISOString().slice(0, 10);
+
+  const unitCards: PropertyUnitCardData[] = unitRows.map((u) => ({
+    id: u.id,
+    label: u.label,
+    rent_amount_cents: u.rent_amount_cents,
+    due_day_of_month: u.due_day_of_month,
+    late_fee_cents: u.late_fee_cents,
+    zelle_handle: u.zelle_handle,
+    cashapp_handle: u.cashapp_handle,
+    payment_instructions: u.payment_instructions,
+    activeLeases: (u.leases ?? [])
+      .filter((l) => l.status === "active")
+      .map((l) => ({
+        id: l.id,
+        tenant_email: l.tenant_email,
+        tenant_name: l.tenant_name,
+        displayName: displayTenantName(l),
+        displayPhone: displayTenantPhone(l),
+        linked: Boolean(l.tenant_id),
+      })),
+  }));
 
   const formRecipients: FormRecipient[] = [
     ...(crmContacts ?? []).map((c) => ({
@@ -283,292 +299,17 @@ export default async function OwnerPropertyDetailPage({ params, searchParams }: 
         </form>
       </section>
 
-      <div className="space-y-6">
-        {unitRows.map((u) => {
-          const activeLeases = (u.leases ?? []).filter((l) => l.status === "active");
-          const defaultRent = (u.rent_amount_cents / 100).toFixed(2);
-
-          return (
-            <div
-              key={u.id}
-              className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Unit {u.label}</h3>
-                  <p className="text-sm text-[var(--muted)]">
-                    Rent {formatCentsAsDollars(u.rent_amount_cents)} · Due day {u.due_day_of_month}
-                    {u.late_fee_cents ? ` · Late fee ${formatCentsAsDollars(u.late_fee_cents)}` : ""}
-                  </p>
-                </div>
-                <Link
-                  href={`/dashboard/owner/properties/${id}/units/${u.id}`}
-                  className="text-sm font-semibold text-[var(--accent)] hover:underline"
-                >
-                  Unit profile →
-                </Link>
-              </div>
-
-              <form
-                action={updateUnitPayments}
-                className="mt-4 grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-2"
-              >
-                <input type="hidden" name="unit_id" value={u.id} />
-                <input type="hidden" name="property_id" value={id} />
-                <div className="sm:col-span-2">
-                  <h4 className="text-sm font-semibold">Receive rent via Zelle or Cash App</h4>
-                  <p className="mt-1 text-xs text-[var(--muted)]">
-                    Tenants see these handles when paying open invoices.
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Zelle</label>
-                  <input
-                    name="zelle_handle"
-                    defaultValue={u.zelle_handle ?? ""}
-                    placeholder="you@email.com"
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Cash App</label>
-                  <input
-                    name="cashapp_handle"
-                    defaultValue={u.cashapp_handle ?? ""}
-                    placeholder="$YourCashtag"
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium">Payment notes</label>
-                  <input
-                    name="payment_instructions"
-                    defaultValue={u.payment_instructions ?? ""}
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--muted-bg)]"
-                  >
-                    Save payment methods
-                  </button>
-                </div>
-              </form>
-
-              <div className="mt-4 border-t border-[var(--border)] pt-4">
-                <h4 className="text-sm font-semibold">Tenants on this unit</h4>
-                <p className="mt-1 text-xs text-[var(--muted)]">
-                  Remove tenant clears a mistaken assignment. End lease keeps history when a tenancy
-                  actually finished.
-                </p>
-                <ul className="mt-2 space-y-4 text-sm">
-                  {activeLeases.map((l) => {
-                    const name = displayTenantName(l);
-                    const linked = Boolean(l.tenant_id);
-                    const rentDefault = (l.rent_amount_cents / 100).toFixed(2);
-                    return (
-                      <li
-                        key={l.id}
-                        className="rounded-lg border border-[var(--border)] bg-[var(--muted-bg)]/40 p-4"
-                      >
-                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="font-medium text-[var(--foreground)]">
-                              {name ?? l.tenant_email}
-                            </p>
-                            <Link
-                              href={`/dashboard/owner/properties/${id}/tenants/${l.id}`}
-                              className="text-xs text-[var(--accent)] hover:underline"
-                            >
-                              Tenant profile →
-                            </Link>
-                          </div>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                              linked
-                                ? "bg-[var(--accent-dim)] text-[var(--foreground)]"
-                                : "bg-[var(--muted-bg)] text-[var(--muted)]"
-                            }`}
-                          >
-                            {linked ? "Portal connected" : "Awaiting signup"}
-                          </span>
-                        </div>
-                        <form action={updateLease} className="grid gap-3 sm:grid-cols-2">
-                          <input type="hidden" name="lease_id" value={l.id} />
-                          <input type="hidden" name="property_id" value={id} />
-                          <div>
-                            <label className="text-sm font-medium">Tenant name</label>
-                            <input
-                              name="tenant_name"
-                              defaultValue={name ?? l.tenant_name ?? ""}
-                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium">Tenant email</label>
-                            <input
-                              name="tenant_email"
-                              type="email"
-                              required
-                              defaultValue={l.tenant_email}
-                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <div className="sm:col-span-2">
-                            <label className="text-sm font-medium">Tenant phone</label>
-                            <input
-                              name="tenant_phone"
-                              type="tel"
-                              defaultValue={displayTenantPhone(l)}
-                              placeholder="+1 555 123 4567"
-                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium">Monthly rent ($)</label>
-                            <input
-                              name="rent_amount_dollars"
-                              type="text"
-                              inputMode="decimal"
-                              required
-                              defaultValue={rentDefault}
-                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium">Lease start date</label>
-                            <input
-                              name="start_date"
-                              type="date"
-                              required
-                              defaultValue={l.start_date}
-                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium">Lease end date (optional)</label>
-                            <input
-                              name="end_date"
-                              type="date"
-                              defaultValue={l.end_date ?? ""}
-                              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-                            <button
-                              type="submit"
-                              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
-                            >
-                              Save tenant
-                            </button>
-                            <button
-                              formAction={endLease}
-                              type="submit"
-                              className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--muted-bg)]"
-                            >
-                              End lease
-                            </button>
-                            <ConfirmSubmitButton
-                              formAction={removeTenantFromUnit}
-                              message="Remove this tenant from the unit? Any unpaid invoices for this assignment will be deleted."
-                              className="rounded-lg border border-[var(--danger)]/40 px-4 py-2 text-sm font-semibold text-[var(--danger)] hover:bg-[var(--danger)]/10"
-                            >
-                              Remove tenant
-                            </ConfirmSubmitButton>
-                          </div>
-                        </form>
-                      </li>
-                    );
-                  })}
-                  {!activeLeases.length ? (
-                    <li className="text-[var(--muted)]">No tenant assigned yet.</li>
-                  ) : null}
-                </ul>
-              </div>
-
-              <form
-                action={createLease}
-                className="mt-6 grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-2"
-              >
-                <input type="hidden" name="unit_id" value={u.id} />
-                <input type="hidden" name="property_id" value={id} />
-                <div className="sm:col-span-2">
-                  <h4 className="text-sm font-semibold">Add tenant to this unit</h4>
-                  <p className="mt-1 text-xs text-[var(--muted)]">
-                    Use the email your tenant will sign up with at GotMyRent.com. Their portal
-                    connects automatically after they create an account.
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Tenant name</label>
-                  <input
-                    name="tenant_name"
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                    placeholder="Jane Smith"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Tenant email</label>
-                  <input
-                    name="tenant_email"
-                    type="email"
-                    required
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                    placeholder="tenant@email.com"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium">Tenant phone (optional)</label>
-                  <input
-                    name="tenant_phone"
-                    type="tel"
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                    placeholder="+1 555 123 4567"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Monthly rent ($)</label>
-                  <input
-                    name="rent_amount_dollars"
-                    type="text"
-                    inputMode="decimal"
-                    required
-                    defaultValue={defaultRent}
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Lease start date</label>
-                  <input
-                    name="start_date"
-                    type="date"
-                    required
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Lease end date (optional)</label>
-                  <input
-                    name="end_date"
-                    type="date"
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="flex items-end sm:col-span-2">
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    Add tenant
-                  </button>
-                </div>
-              </form>
-            </div>
-          );
-        })}
-        {unitRows.length === 0 ? (
+      <div className="space-y-3">
+        {unitCards.map((unit, index) => (
+          <PropertyUnitCard
+            key={unit.id}
+            propertyId={id}
+            unit={unit}
+            defaultStartDate={defaultStartDate}
+            defaultOpen={index === 0}
+          />
+        ))}
+        {unitCards.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center text-[var(--muted)]">
             No units yet. Add your first unit above, then assign a tenant to each one.
           </p>
