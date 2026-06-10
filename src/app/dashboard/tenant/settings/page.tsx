@@ -1,5 +1,10 @@
 import { ActionMessage } from "@/components/action-message";
+import { BankConnectionCard } from "@/components/bank-connection-card";
+import { getActiveBankConnection } from "@/lib/plaid/bank-connections";
+import { isPlaidConfigured } from "@/lib/plaid/client";
+import { platformFeeCents } from "@/lib/plaid/fees";
 import { createClient } from "@/lib/supabase/server";
+import { formatMoney } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import { updateTenantNotifications } from "../../actions";
 
@@ -21,19 +26,41 @@ export default async function TenantSettingsPage({
     .eq("id", user.id)
     .maybeSingle();
 
+  const plaidEnabled = isPlaidConfigured();
+  const bankConnection = plaidEnabled
+    ? await getActiveBankConnection(user.id, "payment")
+    : null;
+
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Notification settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Choose how Got My Rent reaches you about rent due dates and late notices.
+          Manage how you pay rent and receive reminders.
         </p>
       </div>
 
       <ActionMessage success={success} error={error} />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <form action={updateTenantNotifications} className="space-y-4">
+        <h2 className="text-lg font-semibold">Bank account</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Connect a checking account to pay rent by ACH. A {formatMoney(platformFeeCents())}{" "}
+          processing fee is added to each bank payment and paid by you — not deducted from your
+          landlord&apos;s payout.
+        </p>
+        <div className="mt-4">
+          <BankConnectionCard
+            purpose="payment"
+            connection={bankConnection}
+            configured={plaidEnabled}
+          />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Notification preferences</h2>
+        <form action={updateTenantNotifications} className="mt-4 space-y-4">
           <div>
             <label className="text-sm font-medium">Email</label>
             <input

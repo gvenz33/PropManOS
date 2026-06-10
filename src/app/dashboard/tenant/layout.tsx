@@ -8,7 +8,7 @@ const links = [
   { href: "/dashboard/tenant", label: "Home" },
   { href: "/dashboard/tenant/invoices", label: "Invoices" },
   { href: "/dashboard/tenant/documents", label: "Documents" },
-  { href: "/dashboard/tenant/settings", label: "Notifications" },
+  { href: "/dashboard/tenant/settings", label: "Settings" },
   { href: "/dashboard/tenant/faq", label: "Tenant FAQ" },
 ];
 
