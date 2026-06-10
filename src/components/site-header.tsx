@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 
 const nav = [
-  { href: "/faq/tenants", label: "Tenant FAQ" },
+  { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact" },
   { href: "/login", label: "Sign in" },
 ];

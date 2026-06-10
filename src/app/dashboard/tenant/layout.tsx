@@ -64,12 +64,6 @@ export default async function TenantLayout({
               {l.label}
             </Link>
           ))}
-          <Link
-            href="/faq/tenants"
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--muted-bg)] hover:text-[var(--foreground)]"
-          >
-            Public FAQ
-          </Link>
         </nav>
       </div>
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>

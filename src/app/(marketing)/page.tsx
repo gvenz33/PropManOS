@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { FaqList } from "@/components/faq-list";
 import { BRAND } from "@/lib/brand";
+import { siteFaqs } from "@/lib/faqs";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +99,25 @@ export default async function HomePage({
             <p className="mt-2 text-sm text-[var(--muted)]">{f.body}</p>
           </div>
         ))}
+      </section>
+
+      <section className="mt-24">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Frequently asked questions</h2>
+            <p className="mt-2 max-w-2xl text-[var(--muted)]">
+              Quick answers about {BRAND.name}. Landlords and tenants get role-specific help inside
+              their dashboard after signing in.
+            </p>
+          </div>
+          <Link
+            href="/faq"
+            className="text-sm font-semibold text-[var(--accent)] hover:underline"
+          >
+            View all FAQ →
+          </Link>
+        </div>
+        <FaqList items={siteFaqs.slice(0, 4)} className="mt-8" />
       </section>
     </div>
   );

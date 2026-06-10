@@ -17,8 +17,8 @@ export function SiteFooter() {
           <Link href="/contact" className="text-[var(--muted)] hover:text-[var(--foreground)]">
             Contact
           </Link>
-          <Link href="/faq/tenants" className="text-[var(--muted)] hover:text-[var(--foreground)]">
-            Tenant FAQ
+          <Link href="/faq" className="text-[var(--muted)] hover:text-[var(--foreground)]">
+            FAQ
           </Link>
           <Link href="/login" className="text-[var(--muted)] hover:text-[var(--foreground)]">
             Sign in
