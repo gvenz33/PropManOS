@@ -4,6 +4,7 @@ import { formatBankLabel } from "@/lib/plaid/format-bank-label";
 import type { BankConnectionRow } from "@/lib/plaid/bank-connections";
 import type { BankConnectionPurpose } from "@/lib/plaid/client";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { usePlaidLink } from "react-plaid-link";
 
 type Props = {
@@ -19,6 +20,7 @@ export function BankConnectionCard({
   configured,
   onConnected,
 }: Props) {
+  const router = useRouter();
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [loadingToken, setLoadingToken] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
