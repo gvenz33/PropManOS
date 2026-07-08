@@ -1,6 +1,7 @@
 type Props = {
   success?: string | null;
   error?: string | null;
+  count?: string | null;
 };
 
 const successCopy: Record<string, string> = {
@@ -14,9 +15,35 @@ const successCopy: Record<string, string> = {
   payments: "Payment methods saved.",
   settings: "Notification preferences saved.",
   submitted: "Maintenance request submitted.",
+  waived: "Late fee waived.",
+  paid: "Invoice marked as paid.",
+  payment: "Payment recorded.",
+  "invoice-updated": "Invoice updated.",
+  emailed: "Invoice emailed to the tenant.",
 };
 
-export function ActionMessage({ success, error }: Props) {
+function buildMessage(success: string, count?: string | null) {
+  const n = Number(count);
+  if (success === "generated") {
+    if (Number.isFinite(n)) {
+      return n === 0
+        ? "No new invoices — every lease already has invoices for those months."
+        : `Generated ${n} new invoice${n === 1 ? "" : "s"}.`;
+    }
+    return "Invoices generated.";
+  }
+  if (success === "late-applied") {
+    if (Number.isFinite(n)) {
+      return n === 0
+        ? "No overdue invoices needed a late fee."
+        : `Applied late rules to ${n} invoice${n === 1 ? "" : "s"}.`;
+    }
+    return "Late fees applied.";
+  }
+  return successCopy[success] ?? "Saved.";
+}
+
+export function ActionMessage({ success, error, count }: Props) {
   if (!success && !error) return null;
 
   if (error) {
@@ -35,7 +62,7 @@ export function ActionMessage({ success, error }: Props) {
       role="status"
       className="rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-dim)]/40 px-4 py-3 text-sm text-[var(--foreground)]"
     >
-      {successCopy[success ?? ""] ?? "Saved."}
+      {buildMessage(success ?? "", count)}
     </p>
   );
 }

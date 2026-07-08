@@ -3,6 +3,7 @@ import { PayInvoiceButton } from "@/components/pay-invoice-button";
 import { getActiveBankConnection } from "@/lib/plaid/bank-connections";
 import { isPlaidConfigured } from "@/lib/plaid/client";
 import { invoiceTotals, platformFeeCents } from "@/lib/plaid/fees";
+import { computeInvoice, statusLabel } from "@/lib/invoices/compute";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
@@ -92,6 +93,7 @@ export default async function TenantInvoicesPage() {
           const pRaw = unit?.properties;
           const property = Array.isArray(pRaw) ? pRaw[0] ?? null : pRaw ?? null;
           const totals = invoiceTotals(inv);
+          const money = computeInvoice(inv);
           const periodLabel = `${inv.period_year}-${String(inv.period_month).padStart(2, "0")}`;
           const ownerReady = property?.owner_id
             ? ownerPayoutReady.has(property.owner_id)
@@ -115,13 +117,25 @@ export default async function TenantInvoicesPage() {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium">{periodLabel}</p>
-                <p className="text-sm capitalize text-[var(--muted)]">{inv.status}</p>
+                <p className="text-sm text-[var(--muted)]">{statusLabel(inv.status)}</p>
               </div>
               <p className="mt-2 text-sm text-[var(--muted)]">Due {inv.due_date}</p>
-              <p className="mt-1 text-lg font-semibold">{formatMoney(totals.rentAmountCents + totals.lateFeeCents)}</p>
+              <p className="mt-1 text-lg font-semibold">
+                {formatMoney(money.balanceCents)}
+                {money.balanceCents !== money.totalCents ? (
+                  <span className="ml-1 text-sm font-normal text-[var(--muted)]">
+                    balance of {formatMoney(money.totalCents)}
+                  </span>
+                ) : null}
+              </p>
               {totals.lateFeeCents > 0 ? (
                 <p className="text-xs text-[var(--muted)]">
                   Includes late fee {formatMoney(totals.lateFeeCents)}
+                </p>
+              ) : null}
+              {money.paidCents > 0 && money.balanceCents > 0 ? (
+                <p className="text-xs text-[var(--muted)]">
+                  {formatMoney(money.paidCents)} already paid
                 </p>
               ) : null}
               {inv.status === "paid" && inv.paid_at ? (

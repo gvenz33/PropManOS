@@ -3,6 +3,13 @@
 import { BRAND } from "@/lib/brand";
 import { formatUnitAddress, upsertTenantCrmContact } from "@/lib/crm";
 import { documentKindLabel } from "@/lib/documents";
+import { computeInvoice, statusAfterPayment } from "@/lib/invoices/compute";
+import {
+  buildInvoiceEmail,
+  buildInvoicePdf,
+  fetchInvoiceDocumentData,
+  invoiceFilename,
+} from "@/lib/invoices/document";
 import { parseDollarsToCents } from "@/lib/money";
 import { isRepairPriority, isRepairStatus } from "@/lib/repair-requests";
 import { sendEmail, sendSms } from "@/lib/notifications/outbound";
@@ -387,24 +394,84 @@ export async function removeTenantFromUnit(formData: FormData): Promise<void> {
   redirect(propertyPath(propertyId, "success=tenant-removed", unitsSection));
 }
 
+function invoicesPath(query?: string) {
+  return `/dashboard/owner/invoices${query ? `?${query}` : ""}`;
+}
+
+function invoiceDetailPath(invoiceId: string, query?: string) {
+  return `/dashboard/owner/invoices/${invoiceId}${query ? `?${query}` : ""}`;
+}
+
+function parseMonthInput(value: FormDataEntryValue | null): { y: number; m: number } | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(String(value ?? "").trim());
+  if (!match) return null;
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return null;
+  return { y, m };
+}
+
+function monthsBetween(from: { y: number; m: number }, to: { y: number; m: number }): { y: number; m: number }[] {
+  const months: { y: number; m: number }[] = [];
+  let y = from.y;
+  let m = from.m;
+  // Guard against runaway ranges (max 36 months).
+  for (let i = 0; i < 36; i += 1) {
+    months.push({ y, m });
+    if (y === to.y && m === to.m) break;
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return months;
+}
+
 export async function generateMonthlyInvoicesForm() {
-  await generateMonthlyInvoices();
+  const now = new Date();
+  const res = await generateInvoicesForMonths([{ y: now.getFullYear(), m: now.getMonth() + 1 }]);
+  if (res.error) redirect(invoicesPath(`error=${encodeURIComponent(res.error)}`));
+  redirect(invoicesPath(`success=generated&count=${res.count ?? 0}`));
+}
+
+export async function generateInvoicesForRangeForm(formData: FormData) {
+  const from = parseMonthInput(formData.get("from_month"));
+  const to = parseMonthInput(formData.get("to_month"));
+  if (!from || !to) {
+    redirect(invoicesPath(`error=${encodeURIComponent("Choose a valid start and end month.")}`));
+  }
+  const fromIdx = from!.y * 12 + from!.m;
+  const toIdx = to!.y * 12 + to!.m;
+  if (toIdx < fromIdx) {
+    redirect(invoicesPath(`error=${encodeURIComponent("The end month must be on or after the start month.")}`));
+  }
+  if (toIdx - fromIdx > 35) {
+    redirect(invoicesPath(`error=${encodeURIComponent("Choose a range of 36 months or fewer.")}`));
+  }
+  const res = await generateInvoicesForMonths(monthsBetween(from!, to!));
+  if (res.error) redirect(invoicesPath(`error=${encodeURIComponent(res.error)}`));
+  redirect(invoicesPath(`success=generated&count=${res.count ?? 0}`));
 }
 
 export async function applyLateFeesForm() {
-  await applyLateFees();
+  const res = await applyLateFees();
+  if (res.error) redirect(invoicesPath(`error=${encodeURIComponent(res.error)}`));
+  redirect(invoicesPath(`success=late-applied&count=${res.count ?? 0}`));
 }
 
 export async function generateMonthlyInvoices() {
+  const now = new Date();
+  return generateInvoicesForMonths([{ y: now.getFullYear(), m: now.getMonth() + 1 }]);
+}
+
+async function generateInvoicesForMonths(months: { y: number; m: number }[]) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Unauthorized" };
-
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
+  if (months.length === 0) return { ok: true, count: 0 };
 
   const { data: properties, error: pErr } = await supabase
     .from("properties")
@@ -425,69 +492,274 @@ export async function generateMonthlyInvoices() {
 
   const { data: leases, error: leErr } = await supabase
     .from("leases")
-    .select("id, rent_amount_cents, unit_id")
+    .select("id, rent_amount_cents, unit_id, start_date, end_date")
     .in("unit_id", unitIds)
     .eq("status", "active");
   if (leErr) return { error: leErr.message };
 
-  let count = 0;
-  for (const lease of leases ?? []) {
-    const day = unitMap.get(lease.unit_id) ?? 1;
-    const lastDom = new Date(y, m, 0).getDate();
-    const dueStr = `${y}-${String(m).padStart(2, "0")}-${String(Math.min(day, lastDom)).padStart(2, "0")}`;
+  const rows: {
+    lease_id: string;
+    period_year: number;
+    period_month: number;
+    amount_cents: number;
+    due_date: string;
+    status: string;
+  }[] = [];
 
-    const { error: invErr } = await supabase.from("invoices").upsert(
-      {
+  for (const { y, m } of months) {
+    const lastDom = new Date(y, m, 0).getDate();
+    const monthStart = new Date(y, m - 1, 1);
+    const monthEnd = new Date(y, m, 0);
+    for (const lease of leases ?? []) {
+      // Only generate charges for months the lease is actually in effect.
+      if (lease.start_date && new Date(`${lease.start_date}T00:00:00`) > monthEnd) continue;
+      if (lease.end_date && new Date(`${lease.end_date}T00:00:00`) < monthStart) continue;
+      const day = unitMap.get(lease.unit_id) ?? 1;
+      const dueStr = `${y}-${String(m).padStart(2, "0")}-${String(Math.min(day, lastDom)).padStart(2, "0")}`;
+      rows.push({
         lease_id: lease.id,
         period_year: y,
         period_month: m,
         amount_cents: lease.rent_amount_cents,
         due_date: dueStr,
         status: "open",
-      },
-      { onConflict: "lease_id,period_year,period_month" },
-    );
-    if (invErr) return { error: invErr.message };
-    count += 1;
+      });
+    }
   }
 
+  if (rows.length === 0) return { ok: true, count: 0 };
+
+  // ignoreDuplicates keeps existing invoices (and their payments) untouched.
+  const { data: inserted, error: invErr } = await supabase
+    .from("invoices")
+    .upsert(rows, { onConflict: "lease_id,period_year,period_month", ignoreDuplicates: true })
+    .select("id");
+  if (invErr) return { error: invErr.message };
+
   revalidatePath("/dashboard/owner/invoices");
-  return { ok: true, count };
+  return { ok: true, count: inserted?.length ?? 0 };
 }
 
 export async function waiveLateFee(invoiceId: string) {
   const supabase = await createClient();
+  const { data: inv } = await supabase
+    .from("invoices")
+    .select("amount_cents, late_fee_cents, amount_paid_cents, status, paid_at")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (!inv) return { error: "Invoice not found." };
+
+  const status = statusAfterPayment(
+    { ...inv, late_fee_waived: true },
+    inv.amount_paid_cents ?? 0,
+  );
   const { error } = await supabase
     .from("invoices")
-    .update({ late_fee_waived: true, late_fee_cents: 0 })
+    .update({
+      late_fee_waived: true,
+      status,
+      paid_at: status === "paid" ? inv.paid_at ?? new Date().toISOString() : inv.paid_at,
+    })
     .eq("id", invoiceId);
   if (error) return { error: error.message };
   revalidatePath("/dashboard/owner/invoices");
+  revalidatePath(invoiceDetailPath(invoiceId));
   return { ok: true };
 }
 
 export async function waiveLateFeeForm(formData: FormData) {
   const id = String(formData.get("invoice_id") ?? "");
   if (!id) return;
-  await waiveLateFee(id);
+  const res = await waiveLateFee(id);
+  const from = String(formData.get("from") ?? "list");
+  const query = res.error ? `error=${encodeURIComponent(res.error)}` : "success=waived";
+  redirect(from === "detail" ? invoiceDetailPath(id, query) : invoicesPath(query));
 }
 
 export async function markInvoicePaid(invoiceId: string) {
   const supabase = await createClient();
+  const { data: inv } = await supabase
+    .from("invoices")
+    .select("amount_cents, late_fee_cents, late_fee_waived")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (!inv) return { error: "Invoice not found." };
+
+  const total = computeInvoice({ ...inv, amount_paid_cents: 0 }).totalCents;
   const { error } = await supabase
     .from("invoices")
-    .update({ status: "paid", paid_at: new Date().toISOString(), late_fee_cents: 0 })
+    .update({ status: "paid", paid_at: new Date().toISOString(), amount_paid_cents: total })
     .eq("id", invoiceId);
   if (error) return { error: error.message };
   revalidatePath("/dashboard/owner/invoices");
+  revalidatePath(invoiceDetailPath(invoiceId));
   revalidatePath("/dashboard/tenant");
+  revalidatePath("/dashboard/tenant/invoices");
   return { ok: true };
 }
 
 export async function markInvoicePaidForm(formData: FormData) {
   const id = String(formData.get("invoice_id") ?? "");
   if (!id) return;
-  await markInvoicePaid(id);
+  const res = await markInvoicePaid(id);
+  const from = String(formData.get("from") ?? "list");
+  const query = res.error ? `error=${encodeURIComponent(res.error)}` : "success=paid";
+  redirect(from === "detail" ? invoiceDetailPath(id, query) : invoicesPath(query));
+}
+
+export async function recordInvoicePaymentForm(formData: FormData) {
+  const id = String(formData.get("invoice_id") ?? "");
+  const from = String(formData.get("from") ?? "detail");
+  const mode = String(formData.get("mode") ?? "partial");
+  const redirectBack = (query: string) =>
+    redirect(from === "list" ? invoicesPath(query) : invoiceDetailPath(id, query));
+
+  if (!id) redirectBack(`error=${encodeURIComponent("Missing invoice.")}`);
+
+  const supabase = await createClient();
+  const { data: inv } = await supabase
+    .from("invoices")
+    .select("amount_cents, late_fee_cents, late_fee_waived, amount_paid_cents, status, paid_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (!inv) redirectBack(`error=${encodeURIComponent("Invoice not found.")}`);
+
+  const money = computeInvoice(inv!);
+  const addCents =
+    mode === "full" ? money.balanceCents : parseDollarsToCents(formData.get("amount")) ?? 0;
+
+  if (addCents <= 0) {
+    redirectBack(`error=${encodeURIComponent("Enter a payment amount greater than zero.")}`);
+  }
+  if (money.balanceCents <= 0) {
+    redirectBack(`error=${encodeURIComponent("This invoice is already paid in full.")}`);
+  }
+
+  const newPaid = Math.min(money.totalCents, money.paidCents + addCents);
+  const status = statusAfterPayment(inv!, newPaid);
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      amount_paid_cents: newPaid,
+      status,
+      paid_at: status === "paid" ? inv!.paid_at ?? new Date().toISOString() : null,
+    })
+    .eq("id", id);
+  if (error) redirectBack(`error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/dashboard/owner/invoices");
+  revalidatePath(invoiceDetailPath(id));
+  revalidatePath("/dashboard/tenant/invoices");
+  redirectBack("success=payment");
+}
+
+export async function updateInvoiceForm(formData: FormData) {
+  const id = String(formData.get("invoice_id") ?? "");
+  if (!id) redirect(invoicesPath(`error=${encodeURIComponent("Missing invoice.")}`));
+
+  const amount = parseDollarsToCents(formData.get("amount_dollars"));
+  const lateFee = parseDollarsToCents(formData.get("late_fee_dollars")) ?? 0;
+  const dueDate = String(formData.get("due_date") ?? "").trim();
+  const waived = formData.has("late_fee_waived");
+
+  if (amount === null || amount < 0) {
+    redirect(invoiceDetailPath(id, `error=${encodeURIComponent("Enter a valid rent amount.")}`));
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+    redirect(invoiceDetailPath(id, `error=${encodeURIComponent("Enter a valid due date.")}`));
+  }
+
+  const supabase = await createClient();
+  const { data: current } = await supabase
+    .from("invoices")
+    .select("amount_paid_cents, status, paid_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (!current) {
+    redirect(invoiceDetailPath(id, `error=${encodeURIComponent("Invoice not found.")}`));
+  }
+
+  const status = statusAfterPayment(
+    {
+      amount_cents: amount!,
+      late_fee_cents: lateFee,
+      late_fee_waived: waived,
+      status: current!.status,
+    },
+    current!.amount_paid_cents ?? 0,
+  );
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      amount_cents: amount!,
+      late_fee_cents: Math.max(0, lateFee),
+      late_fee_waived: waived,
+      due_date: dueDate,
+      status,
+      paid_at: status === "paid" ? current!.paid_at ?? new Date().toISOString() : null,
+    })
+    .eq("id", id);
+  if (error) {
+    redirect(invoiceDetailPath(id, `error=${encodeURIComponent(error.message)}`));
+  }
+
+  revalidatePath("/dashboard/owner/invoices");
+  revalidatePath(invoiceDetailPath(id));
+  revalidatePath("/dashboard/tenant/invoices");
+  redirect(invoiceDetailPath(id, "success=invoice-updated"));
+}
+
+export async function emailInvoiceForm(formData: FormData) {
+  const id = String(formData.get("invoice_id") ?? "");
+  const from = String(formData.get("from") ?? "list");
+  const redirectBack = (query: string) =>
+    redirect(from === "detail" ? invoiceDetailPath(id, query) : invoicesPath(query));
+
+  if (!id) redirectBack(`error=${encodeURIComponent("Missing invoice.")}`);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const data = await fetchInvoiceDocumentData(supabase, id);
+  if (!data) redirectBack(`error=${encodeURIComponent("Invoice not found.")}`);
+  if (!data!.tenantEmail) {
+    redirectBack(`error=${encodeURIComponent("This tenant has no email on file.")}`);
+  }
+
+  const pdf = await buildInvoicePdf(data!);
+  const email = buildInvoiceEmail(data!);
+  const result = await sendEmail(
+    data!.tenantEmail,
+    email.subject,
+    email.text,
+    [{ filename: invoiceFilename(data!), content: pdf.toString("base64") }],
+    email.html,
+  );
+
+  if (!result.ok) {
+    redirectBack(`error=${encodeURIComponent(result.error ?? "Could not send email.")}`);
+  }
+
+  try {
+    const service = createServiceClient();
+    if (service) {
+      await service.from("notification_log").insert({
+        profile_id: user.id,
+        invoice_id: id,
+        channel: "email",
+        template: "invoice",
+        body: email.subject,
+      });
+    }
+  } catch {
+    // Logging is best-effort; the email already sent.
+  }
+
+  redirectBack("success=emailed");
 }
 
 export async function applyLateFees() {
@@ -499,7 +771,7 @@ export async function applyLateFees() {
 
   const { data: properties } = await supabase.from("properties").select("id").eq("owner_id", user.id);
   const propIds = (properties ?? []).map((p) => p.id);
-  if (propIds.length === 0) return { ok: true };
+  if (propIds.length === 0) return { ok: true, count: 0 };
 
   const { data: units } = await supabase
     .from("units")
@@ -507,7 +779,7 @@ export async function applyLateFees() {
     .in("property_id", propIds);
   const unitById = new Map((units ?? []).map((u) => [u.id, u]));
   const unitIds = [...unitById.keys()];
-  if (unitIds.length === 0) return { ok: true };
+  if (unitIds.length === 0) return { ok: true, count: 0 };
 
   const { data: leases } = await supabase
     .from("leases")
@@ -515,19 +787,20 @@ export async function applyLateFees() {
     .in("unit_id", unitIds)
     .eq("status", "active");
   const leaseIds = (leases ?? []).map((l) => l.id);
-  if (leaseIds.length === 0) return { ok: true };
+  if (leaseIds.length === 0) return { ok: true, count: 0 };
 
   const { data: invoices, error } = await supabase
     .from("invoices")
-    .select("id, due_date, status, late_fee_waived, lease_id")
+    .select("id, due_date, status, late_fee_waived, late_fee_cents, lease_id")
     .in("lease_id", leaseIds)
-    .eq("status", "open")
+    .in("status", ["open", "partial"])
     .eq("late_fee_waived", false);
 
   if (error) return { error: error.message };
 
   const leaseUnit = new Map((leases ?? []).map((l) => [l.id, l.unit_id]));
   const now = new Date();
+  let count = 0;
 
   for (const inv of invoices ?? []) {
     const unitId = leaseUnit.get(inv.lease_id);
@@ -537,18 +810,19 @@ export async function applyLateFees() {
     const due = new Date(`${inv.due_date}T12:00:00`);
     const lateAfter = new Date(due.getTime() + (unit.grace_days ?? 0) * 86400000);
     if (now <= lateAfter) continue;
+
     const fee = unit.late_fee_cents ?? 0;
-    if (fee <= 0) {
-      await supabase.from("invoices").update({ status: "late" }).eq("id", inv.id);
-    } else {
-      await supabase
-        .from("invoices")
-        .update({ status: "late", late_fee_cents: fee })
-        .eq("id", inv.id);
-    }
+    const alreadyApplied = (inv.late_fee_cents ?? 0) > 0;
+    const update: { status?: string; late_fee_cents?: number } = {};
+    if (inv.status === "open") update.status = "late";
+    if (fee > 0 && !alreadyApplied) update.late_fee_cents = fee;
+    if (Object.keys(update).length === 0) continue;
+
+    await supabase.from("invoices").update(update).eq("id", inv.id);
+    count += 1;
   }
   revalidatePath("/dashboard/owner/invoices");
-  return { ok: true };
+  return { ok: true, count };
 }
 
 export async function createCrmContact(formData: FormData): Promise<void> {

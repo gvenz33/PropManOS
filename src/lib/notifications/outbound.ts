@@ -8,6 +8,7 @@ export async function sendEmail(
   subject: string,
   body: string,
   attachments?: EmailAttachment[],
+  html?: string,
 ) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.NOTIFICATIONS_FROM_EMAIL;
@@ -19,6 +20,9 @@ export async function sendEmail(
     subject,
     text: body,
   };
+  if (html) {
+    payload.html = html;
+  }
   if (attachments?.length) {
     payload.attachments = attachments;
   }
