@@ -1,5 +1,6 @@
 import { ActionMessage } from "@/components/action-message";
 import { BankConnectionCard } from "@/components/bank-connection-card";
+import { ChangePasswordForm } from "@/components/change-password-form";
 import { getActiveBankConnection } from "@/lib/plaid/bank-connections";
 import { isPlaidConfigured } from "@/lib/plaid/client";
 import { platformFeeCents } from "@/lib/plaid/fees";
@@ -55,6 +56,16 @@ export default async function TenantSettingsPage({
             connection={bankConnection}
             configured={plaidEnabled}
           />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Change password</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Update your sign-in password. You will need your current password.
+        </p>
+        <div className="mt-4">
+          <ChangePasswordForm returnTo="/dashboard/tenant/settings" />
         </div>
       </section>
 

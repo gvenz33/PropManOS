@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/password-input";
 import { createClient } from "@/lib/supabase/client";
 import { authCallbackUrl } from "@/lib/site-url";
 import { useRouter } from "next/navigation";
@@ -87,21 +88,16 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
           className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none ring-[var(--accent)] focus:ring-2"
         />
       </div>
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none ring-[var(--accent)] focus:ring-2"
-        />
-      </div>
+      <PasswordInput
+        id="password"
+        name="password"
+        label="Password"
+        autoComplete="new-password"
+        required
+        minLength={8}
+        value={password}
+        onChange={setPassword}
+      />
       {message ? (
         <p className="text-sm text-[var(--muted)]" role="status">
           {message}

@@ -1,4 +1,5 @@
 import { ActionMessage } from "@/components/action-message";
+import { ChangePasswordForm } from "@/components/change-password-form";
 import { BRAND } from "@/lib/brand";
 import {
   isResendConfigured,
@@ -165,6 +166,16 @@ export default async function OwnerSettingsPage({
             Save email settings
           </button>
         </form>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Change password</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Update your sign-in password. You will need your current password.
+        </p>
+        <div className="mt-4">
+          <ChangePasswordForm returnTo="/dashboard/owner/settings" />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">

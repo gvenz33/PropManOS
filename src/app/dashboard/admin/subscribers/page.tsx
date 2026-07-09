@@ -1,4 +1,6 @@
+import { ActionMessage } from "@/components/action-message";
 import { ROLE_LABELS, type UserRole } from "@/lib/brand";
+import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { SubscriberRoleSelect } from "./role-select";
@@ -15,9 +17,9 @@ type FilterKey = (typeof filters)[number]["key"];
 export default async function AdminSubscribersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string }>;
+  searchParams: Promise<{ role?: string; success?: string; error?: string }>;
 }) {
-  const { role: roleFilter } = await searchParams;
+  const { role: roleFilter, success, error } = await searchParams;
   const filter = (filters.some((f) => f.key === roleFilter) ? roleFilter : "all") as FilterKey;
 
   const supabase = await createClient();
@@ -27,7 +29,7 @@ export default async function AdminSubscribersPage({
 
   let query = supabase
     .from("profiles")
-    .select("id, full_name, role, email, phone, created_at")
+    .select("id, full_name, role, email, phone, created_at, subscription_plan")
     .order("created_at", { ascending: false });
 
   if (filter !== "all") {
@@ -61,6 +63,8 @@ export default async function AdminSubscribersPage({
         ))}
       </div>
 
+      <ActionMessage success={success} error={error} />
+
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-[var(--border)] bg-[var(--muted-bg)]">
@@ -68,7 +72,9 @@ export default async function AdminSubscribersPage({
               <th className="px-4 py-3 font-semibold">Name</th>
               <th className="px-4 py-3 font-semibold">Email</th>
               <th className="px-4 py-3 font-semibold">Role</th>
+              <th className="px-4 py-3 font-semibold">Plan</th>
               <th className="px-4 py-3 font-semibold">Joined</th>
+              <th className="px-4 py-3 font-semibold" />
             </tr>
           </thead>
           <tbody>
@@ -89,13 +95,25 @@ export default async function AdminSubscribersPage({
                     />
                   </td>
                   <td className="px-4 py-3 text-[var(--muted)]">
+                    {SUBSCRIPTION_PLANS[(subscriber.subscription_plan ?? "free") as SubscriptionPlan]
+                      ?.label ?? "Free"}
+                  </td>
+                  <td className="px-4 py-3 text-[var(--muted)]">
                     {new Date(subscriber.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/dashboard/admin/subscribers/${subscriber.id}`}
+                      className="text-sm font-medium text-[var(--accent)] hover:underline"
+                    >
+                      Manage
+                    </Link>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-[var(--muted)]">
+                <td colSpan={6} className="px-4 py-10 text-center text-[var(--muted)]">
                   No subscribers found for this filter.
                 </td>
               </tr>

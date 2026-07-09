@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/password-input";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -45,23 +46,22 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         />
       </div>
       <div>
-        <div className="flex items-center justify-between gap-3">
-          <label htmlFor="password" className="block text-sm font-medium">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <label htmlFor="password" className="text-sm font-medium">
             Password
           </label>
           <Link href="/forgot-password" className="text-sm text-[var(--accent)] hover:underline">
             Forgot password?
           </Link>
         </div>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
+          label=""
           autoComplete="current-password"
           required
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none ring-[var(--accent)] focus:ring-2"
+          onChange={setPassword}
         />
       </div>
       {message ? (
