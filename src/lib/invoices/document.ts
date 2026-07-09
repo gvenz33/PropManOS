@@ -309,7 +309,10 @@ export function invoiceFilename(data: InvoiceDocumentData) {
   return `invoice-${data.periodYear}-${mm}${unit ? `-${unit}` : ""}.pdf`;
 }
 
-export function buildInvoiceEmail(data: InvoiceDocumentData): {
+export function buildInvoiceEmail(
+  data: InvoiceDocumentData,
+  signature?: string | null,
+): {
   subject: string;
   text: string;
   html: string;
@@ -328,6 +331,9 @@ export function buildInvoiceEmail(data: InvoiceDocumentData): {
   if (data.cashappHandle) payLines.push(`Cash App: ${data.cashappHandle}`);
   if (data.paymentInstructions) payLines.push(data.paymentInstructions);
 
+  const closing = `— ${data.landlordName} via ${BRAND.name}`;
+  const signatureBlock = signature?.trim() ? `\n\n${signature.trim()}` : "";
+
   const text = `${greeting}
 
 Please find your rent invoice for ${data.periodLabel} attached (${data.invoiceNumber}).
@@ -337,7 +343,7 @@ Rent: ${formatMoney(data.rentCents)}${data.lateFeeCents > 0 ? `\nLate fee: ${for
 Total: ${formatMoney(data.totalCents)}${data.paidCents > 0 ? `\nAmount paid: ${formatMoney(data.paidCents)}` : ""}
 ${balanceLine}
 ${payLines.length && data.balanceCents > 0 ? `\nHow to pay:\n${payLines.map((l) => `• ${l}`).join("\n")}\n` : ""}
-— ${data.landlordName} via ${BRAND.name}`;
+${closing}${signatureBlock}`;
 
   const rows = [
     ["Rent", formatMoney(data.rentCents)],
@@ -373,7 +379,12 @@ ${payLines.length && data.balanceCents > 0 ? `\nHow to pay:\n${payLines.map((l) 
       ${data.balanceCents === 0 ? "Paid in full — thank you!" : `Balance due: ${formatMoney(data.balanceCents)} by ${escapeHtml(data.dueDate)}`}
     </div>
     ${payHtml}
-    <p style="margin:20px 0 0;font-size:12px;color:#64748b;">— ${escapeHtml(data.landlordName)} via ${escapeHtml(BRAND.name)}</p>
+    <p style="margin:20px 0 0;font-size:12px;color:#64748b;">${escapeHtml(closing)}</p>
+    ${
+      signature?.trim()
+        ? `<p style="margin:8px 0 0;font-size:12px;color:#64748b;">${escapeHtml(signature.trim()).replace(/\n/g, "<br/>")}</p>`
+        : ""
+    }
   </div>
 </div>`;
 

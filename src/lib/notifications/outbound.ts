@@ -1,3 +1,5 @@
+import type { EmailSendOptions } from "./email-config";
+
 type EmailAttachment = {
   filename: string;
   content: string;
@@ -9,10 +11,16 @@ export async function sendEmail(
   body: string,
   attachments?: EmailAttachment[],
   html?: string,
+  options?: EmailSendOptions,
 ) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.NOTIFICATIONS_FROM_EMAIL;
-  if (!apiKey || !from) return { ok: false, error: "Email not configured." };
+  const from = options?.from ?? process.env.NOTIFICATIONS_FROM_EMAIL;
+  if (!apiKey || !from) {
+    return {
+      ok: false,
+      error: "Email not configured. Add RESEND_API_KEY and NOTIFICATIONS_FROM_EMAIL in Vercel, then set your sender details in Settings.",
+    };
+  }
 
   const payload: Record<string, unknown> = {
     from,
@@ -20,6 +28,9 @@ export async function sendEmail(
     subject,
     text: body,
   };
+  if (options?.replyTo) {
+    payload.reply_to = options.replyTo;
+  }
   if (html) {
     payload.html = html;
   }

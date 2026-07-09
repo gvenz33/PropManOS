@@ -28,7 +28,11 @@ export default async function LoginPage({ searchParams }: Props) {
       <h1 className="mt-4 text-center text-2xl font-bold">Sign in</h1>
       {sp.error ? (
         <p className="mt-2 text-center text-sm text-[var(--danger)]">
-          Something went wrong. Try again or reset your password.
+          Something went wrong. Try again or{" "}
+          <Link href="/forgot-password" className="font-medium underline">
+            reset your password
+          </Link>
+          .
         </p>
       ) : null}
       <div className="mt-8 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">

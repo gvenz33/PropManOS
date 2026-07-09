@@ -13,6 +13,11 @@ import {
 import { parseDollarsToCents } from "@/lib/money";
 import { isRepairPriority, isRepairStatus } from "@/lib/repair-requests";
 import { sendEmail, sendSms } from "@/lib/notifications/outbound";
+import {
+  appendSignature,
+  emailOptionsFromSettings,
+  validateEmailAddress,
+} from "@/lib/notifications/email-config";
 import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
@@ -198,6 +203,90 @@ export async function updateTenantNotifications(formData: FormData): Promise<voi
   }
   revalidatePath("/dashboard/tenant/settings");
   redirect("/dashboard/tenant/settings?success=settings");
+}
+
+export async function updateOwnerEmailSettings(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const senderName = String(formData.get("email_sender_name") ?? "").trim();
+  const fromAddress = String(formData.get("email_from_address") ?? "").trim();
+  const replyTo = String(formData.get("email_reply_to") ?? "").trim();
+  const signature = String(formData.get("email_signature") ?? "").trim();
+
+  const fromError = fromAddress ? validateEmailAddress(fromAddress, "From email") : null;
+  if (fromError) {
+    redirect(`/dashboard/owner/settings?error=${encodeURIComponent(fromError)}`);
+  }
+  const replyError = replyTo ? validateEmailAddress(replyTo, "Reply-to email") : null;
+  if (replyError) {
+    redirect(`/dashboard/owner/settings?error=${encodeURIComponent(replyError)}`);
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      email_sender_name: senderName || null,
+      email_from_address: fromAddress || null,
+      email_reply_to: replyTo || null,
+      email_signature: signature || null,
+    })
+    .eq("id", user.id);
+
+  if (error) {
+    redirect(`/dashboard/owner/settings?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard/owner/settings");
+  redirect("/dashboard/owner/settings?success=email-settings");
+}
+
+export async function sendTestEmail(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const testEmail = String(formData.get("test_email") ?? "").trim().toLowerCase();
+  const emailError = validateEmailAddress(testEmail, "Test email");
+  if (emailError) {
+    redirect(`/dashboard/owner/settings?error=${encodeURIComponent(emailError)}`);
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email_sender_name, email_from_address, email_reply_to, email_signature")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const senderName = profile?.email_sender_name?.trim() || profile?.full_name?.trim() || "Your account";
+  const body = appendSignature(
+    `Hello,
+
+This is a test email from ${BRAND.name}. If you received this, your email settings are working.
+
+— ${senderName}`,
+    profile,
+  );
+
+  const result = await sendEmail(
+    testEmail,
+    `${BRAND.name} test email`,
+    body,
+    undefined,
+    undefined,
+    emailOptionsFromSettings(profile),
+  );
+
+  if (!result.ok) {
+    redirect(`/dashboard/owner/settings?error=${encodeURIComponent(result.error ?? "Test email failed.")}`);
+  }
+
+  redirect("/dashboard/owner/settings?success=test-email");
 }
 
 export async function createLease(formData: FormData): Promise<void> {
@@ -730,14 +819,21 @@ export async function emailInvoiceForm(formData: FormData) {
     redirectBack(`error=${encodeURIComponent("This tenant has no email on file.")}`);
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("email_sender_name, email_from_address, email_reply_to, email_signature")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const pdf = await buildInvoicePdf(data!);
-  const email = buildInvoiceEmail(data!);
+  const email = buildInvoiceEmail(data!, profile?.email_signature);
   const result = await sendEmail(
     data!.tenantEmail,
     email.subject,
     email.text,
     [{ filename: invoiceFilename(data!), content: pdf.toString("base64") }],
     email.html,
+    emailOptionsFromSettings(profile),
   );
 
   if (!result.ok) {
@@ -1076,7 +1172,7 @@ export async function sendRentalFormAction(formData: FormData): Promise<{
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select("full_name, email_sender_name, email_from_address, email_reply_to, email_signature")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -1088,14 +1184,17 @@ export async function sendRentalFormAction(formData: FormData): Promise<{
   const defaultMessage = `Please review the attached ${formLabel.toLowerCase()} for ${propertyName ?? "the property"}.`;
   const note = message || defaultMessage;
 
-  const emailBody = `${greeting}
+  const emailBody = appendSignature(
+    `${greeting}
 
 ${note}
 
 Download ${doc.filename} (link valid 7 days):
 ${signed.signedUrl}
 
-— ${landlordName} via ${BRAND.name}`;
+— ${landlordName} via ${BRAND.name}`,
+    profile,
+  );
 
   const smsBody = `${landlordName} sent you ${doc.filename} for ${propertyName ?? "a rental"}: ${signed.signedUrl}`;
 
@@ -1106,6 +1205,9 @@ ${signed.signedUrl}
       recipientEmail,
       `${formLabel} — ${propertyName ?? BRAND.name}`,
       emailBody,
+      undefined,
+      undefined,
+      emailOptionsFromSettings(profile),
     );
     if (result.ok) {
       await supabase.from("document_sends").insert({

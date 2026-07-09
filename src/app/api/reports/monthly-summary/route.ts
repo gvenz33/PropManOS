@@ -1,4 +1,8 @@
 import { BRAND } from "@/lib/brand";
+import {
+  appendSignature,
+  emailOptionsFromSettings,
+} from "@/lib/notifications/email-config";
 import { sendEmail } from "@/lib/notifications/outbound";
 import {
   buildMonthlySummaryWorkbook,
@@ -69,6 +73,11 @@ export async function POST(request: Request) {
 
   const period = { year, month, propertyId: body.property_id || null };
   const data = await fetchMonthlySummaryData(supabase, user.id, period);
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("email_sender_name, email_from_address, email_reply_to, email_signature")
+    .eq("id", user.id)
+    .maybeSingle();
   const buffer = await buildMonthlySummaryWorkbook(data);
   const filename = monthlySummaryFilename(year, month);
   const greeting = recipientName ? `Hi ${recipientName},` : "Hello,";
@@ -76,7 +85,8 @@ export async function POST(request: Request) {
   const result = await sendEmail(
     recipientEmail,
     `${BRAND.name} monthly report — ${data.periodLabel}`,
-    `${greeting}
+    appendSignature(
+      `${greeting}
 
 Attached is your ${data.periodLabel} property summary from ${BRAND.name}.
 
@@ -89,7 +99,11 @@ Highlights:
 Open the Excel file for unit detail, invoice status, and maintenance tables.
 
 — ${data.managerName} via ${BRAND.name}`,
+      profile,
+    ),
     [{ filename, content: buffer.toString("base64") }],
+    undefined,
+    emailOptionsFromSettings(profile),
   );
 
   if (!result.ok) {

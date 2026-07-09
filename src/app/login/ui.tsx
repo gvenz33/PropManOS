@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -44,9 +45,14 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         />
       </div>
       <div>
-        <label htmlFor="password" className="block text-sm font-medium">
-          Password
-        </label>
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="password" className="block text-sm font-medium">
+            Password
+          </label>
+          <Link href="/forgot-password" className="text-sm text-[var(--accent)] hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"

@@ -12,6 +12,7 @@ const links = [
   { href: "/dashboard/owner/repairs", label: "Maintenance" },
   { href: "/dashboard/owner/reports", label: "Owner reports" },
   { href: "/dashboard/owner/crm", label: "CRM" },
+  { href: "/dashboard/owner/settings", label: "Settings" },
   { href: "/dashboard/owner/faq", label: "Landlord FAQ" },
 ];
 
