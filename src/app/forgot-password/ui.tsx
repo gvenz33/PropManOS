@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { authCallbackUrl } from "@/lib/site-url";
 import { useState } from "react";
 
 export function ForgotPasswordForm() {
@@ -15,9 +16,8 @@ export function ForgotPasswordForm() {
     setMessage(null);
 
     const supabase = createClient();
-    const origin = window.location.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: `${origin}/auth/callback?next=/reset-password`,
+      redirectTo: authCallbackUrl("/reset-password"),
     });
 
     setLoading(false);

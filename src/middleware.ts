@@ -15,7 +15,11 @@ export async function middleware(request: NextRequest) {
     const callbackUrl = request.nextUrl.clone();
     callbackUrl.pathname = "/auth/callback";
     if (!callbackUrl.searchParams.has("next")) {
-      callbackUrl.searchParams.set("next", "/dashboard");
+      const recoveryType = request.nextUrl.searchParams.get("type");
+      callbackUrl.searchParams.set(
+        "next",
+        recoveryType === "recovery" ? "/reset-password" : "/dashboard",
+      );
     }
     return NextResponse.redirect(callbackUrl);
   }

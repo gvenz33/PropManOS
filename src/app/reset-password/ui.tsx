@@ -16,14 +16,33 @@ export function ResetPasswordForm() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+
+    async function verifySession() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          setCheckingSession(false);
+          setMessage("This reset link is invalid or has expired.");
+          return;
+        }
+        window.history.replaceState({}, "", "/reset-password");
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setCheckingSession(false);
       if (user) {
         setReady(true);
         return;
       }
       setMessage("This reset link is invalid or has expired.");
-    });
+    }
+
+    void verifySession();
   }, []);
 
   async function onSubmit(e: React.FormEvent) {

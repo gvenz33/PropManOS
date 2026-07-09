@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { authCallbackUrl } from "@/lib/site-url";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -18,12 +19,11 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
     setLoading(true);
     setMessage(null);
     const supabase = createClient();
-    const origin = window.location.origin;
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${origin}/auth/callback?next=/dashboard`,
+        emailRedirectTo: authCallbackUrl("/dashboard"),
         data: { full_name: fullName, role },
       },
     });

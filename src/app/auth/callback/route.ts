@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 function safeNextPath(next: string | null) {
   if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return "/dashboard";
+    return null;
   }
   return next;
 }
@@ -13,13 +13,14 @@ export async function GET(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
-  const next = safeNextPath(searchParams.get("next"));
+  const requestedNext = safeNextPath(searchParams.get("next"));
 
   if (!code || !supabaseUrl || !supabaseAnonKey) {
     return NextResponse.redirect(`${origin}/login?error=auth`);
   }
 
-  const redirectUrl = `${origin}${next}`;
+  let destination = requestedNext ?? "/dashboard";
+  let redirectUrl = `${origin}${destination}`;
   let response = NextResponse.redirect(redirectUrl);
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -42,6 +43,21 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     return NextResponse.redirect(`${origin}/login?error=auth`);
+  }
+
+  if (!requestedNext) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.recovery_sent_at) {
+      destination = "/reset-password";
+      redirectUrl = `${origin}${destination}`;
+      const recoveryResponse = NextResponse.redirect(redirectUrl);
+      response.cookies.getAll().forEach((cookie) => {
+        recoveryResponse.cookies.set(cookie);
+      });
+      response = recoveryResponse;
+    }
   }
 
   return response;
