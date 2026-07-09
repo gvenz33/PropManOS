@@ -16,6 +16,7 @@ const successCopy: Record<string, string> = {
   settings: "Notification preferences saved.",
   "email-settings": "Email settings saved.",
   "test-email": "Test email sent.",
+  sent: "If an account exists for that email, we sent a password reset link.",
   submitted: "Maintenance request submitted.",
   waived: "Late fee waived.",
   paid: "Invoice marked as paid.",

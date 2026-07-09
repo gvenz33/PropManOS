@@ -1,8 +1,15 @@
 import { BrandLogo } from "@/components/brand-logo";
+import { ActionMessage } from "@/components/action-message";
 import Link from "next/link";
 import { ForgotPasswordForm } from "./ui";
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string; error?: string }>;
+}) {
+  const { success, error } = await searchParams;
+
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-4 py-16">
       <div className="flex justify-center">
@@ -13,7 +20,10 @@ export default function ForgotPasswordPage() {
         Enter your account email and we&apos;ll send you a link to choose a new password.
       </p>
       <div className="mt-8 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <ForgotPasswordForm />
+        <div className="space-y-4">
+          <ActionMessage success={success} error={error} />
+          {!success ? <ForgotPasswordForm /> : null}
+        </div>
       </div>
       <p className="mt-6 text-center text-sm text-[var(--muted)]">
         Remembered it?{" "}
