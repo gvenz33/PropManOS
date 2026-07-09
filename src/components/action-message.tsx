@@ -23,6 +23,8 @@ const successCopy: Record<string, string> = {
   "reset-sent": "Password reset email sent.",
   "temp-password-set": "Temporary password set.",
   "account-deleted": "Account deleted.",
+  "account-created": "Account created.",
+  "account-created-invited": "Account created and invite email sent.",
   sent: "If an account exists for that email, we sent a password reset link.",
   submitted: "Maintenance request submitted.",
   waived: "Late fee waived.",

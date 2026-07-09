@@ -3,7 +3,10 @@ import { ROLE_LABELS, type UserRole } from "@/lib/brand";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { AddSubscriberPanel } from "./add-subscriber-panel";
 import { SubscriberRoleSelect } from "./role-select";
+import { SubscriberDeleteButton } from "./subscriber-delete-button";
+import { SubscriberSearchBar } from "./subscriber-search-bar";
 
 const filters = [
   { key: "all", label: "All" },
@@ -14,13 +17,22 @@ const filters = [
 
 type FilterKey = (typeof filters)[number]["key"];
 
+function filterHref(filter: FilterKey, query?: string) {
+  const params = new URLSearchParams();
+  if (filter !== "all") params.set("role", filter);
+  if (query) params.set("q", query);
+  const qs = params.toString();
+  return `/dashboard/admin/subscribers${qs ? `?${qs}` : ""}`;
+}
+
 export default async function AdminSubscribersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string; success?: string; error?: string }>;
+  searchParams: Promise<{ role?: string; q?: string; success?: string; error?: string }>;
 }) {
-  const { role: roleFilter, success, error } = await searchParams;
+  const { role: roleFilter, q, success, error } = await searchParams;
   const filter = (filters.some((f) => f.key === roleFilter) ? roleFilter : "all") as FilterKey;
+  const search = q?.trim() ?? "";
 
   const supabase = await createClient();
   const {
@@ -35,23 +47,31 @@ export default async function AdminSubscribersPage({
   if (filter !== "all") {
     query = query.eq("role", filter);
   }
+  if (search) {
+    query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+  }
 
   const { data: subscribers } = await query;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Subscribers</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Manage landlords, property managers, tenants, and site admins.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Subscribers</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Add, search, edit, and remove landlord, tenant, and admin accounts.
+          </p>
+        </div>
+        <AddSubscriberPanel />
       </div>
+
+      <SubscriberSearchBar />
 
       <div className="flex flex-wrap gap-2">
         {filters.map((f) => (
           <Link
             key={f.key}
-            href={f.key === "all" ? "/dashboard/admin/subscribers" : `/dashboard/admin/subscribers?role=${f.key}`}
+            href={filterHref(f.key, search || undefined)}
             className={`rounded-full px-3 py-1.5 text-sm font-medium ${
               filter === f.key
                 ? "bg-[var(--accent)] text-white"
@@ -74,7 +94,7 @@ export default async function AdminSubscribersPage({
               <th className="px-4 py-3 font-semibold">Role</th>
               <th className="px-4 py-3 font-semibold">Plan</th>
               <th className="px-4 py-3 font-semibold">Joined</th>
-              <th className="px-4 py-3 font-semibold" />
+              <th className="px-4 py-3 font-semibold text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -101,20 +121,30 @@ export default async function AdminSubscribersPage({
                   <td className="px-4 py-3 text-[var(--muted)]">
                     {new Date(subscriber.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/dashboard/admin/subscribers/${subscriber.id}`}
-                      className="text-sm font-medium text-[var(--accent)] hover:underline"
-                    >
-                      Manage
-                    </Link>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        href={`/dashboard/admin/subscribers/${subscriber.id}`}
+                        className="text-sm font-medium text-[var(--accent)] hover:underline"
+                      >
+                        Manage
+                      </Link>
+                      <SubscriberDeleteButton
+                        profileId={subscriber.id}
+                        email={subscriber.email ?? ""}
+                        name={subscriber.full_name ?? ""}
+                        disabled={subscriber.id === user?.id || !subscriber.email}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-[var(--muted)]">
-                  No subscribers found for this filter.
+                  {search
+                    ? "No subscribers match your search."
+                    : "No subscribers found for this filter."}
                 </td>
               </tr>
             )}

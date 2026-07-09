@@ -33,6 +33,10 @@ function subscriberPath(profileId: string, query?: string) {
   return `/dashboard/admin/subscribers/${profileId}${query ? `?${query}` : ""}`;
 }
 
+function subscribersPath(query?: string) {
+  return `/dashboard/admin/subscribers${query ? `?${query}` : ""}`;
+}
+
 async function getSubscriberEmail(profileId: string) {
   const { supabase } = await requireAdmin();
   const { data: profile } = await supabase
@@ -59,6 +63,100 @@ export async function updateSubscriberRole(profileId: string, role: UserRole) {
   revalidatePath("/dashboard/admin/subscribers");
   revalidatePath(subscriberPath(profileId));
   return { ok: true };
+}
+
+export async function createSubscriber(formData: FormData): Promise<void> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const role = String(formData.get("role") ?? "tenant") as UserRole;
+  const phone = String(formData.get("phone") ?? "").trim();
+  const plan = String(formData.get("subscription_plan") ?? "free");
+  const password = String(formData.get("password") ?? "");
+  const sendInvite = formData.get("send_invite") === "on";
+
+  if (!email) {
+    redirect(subscribersPath(`error=${encodeURIComponent("Email is required.")}`));
+  }
+  if (!ROLE_LABELS[role]) {
+    redirect(subscribersPath(`error=${encodeURIComponent("Choose a valid role.")}`));
+  }
+  if (!isSubscriptionPlan(plan)) {
+    redirect(subscribersPath(`error=${encodeURIComponent("Choose a valid subscription plan.")}`));
+  }
+  if (!sendInvite && password.length < 8) {
+    redirect(
+      subscribersPath(
+        `error=${encodeURIComponent("Set a temporary password (8+ characters) or choose to email an invite link.")}`,
+      ),
+    );
+  }
+
+  const service = createServiceClient();
+  if (!service) {
+    redirect(
+      subscribersPath(
+        `error=${encodeURIComponent("Account creation is temporarily unavailable.")}`,
+      ),
+    );
+  }
+
+  const initialPassword = sendInvite
+    ? crypto.randomUUID() + crypto.randomUUID()
+    : password;
+
+  const { data, error } = await service.auth.admin.createUser({
+    email,
+    password: initialPassword,
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
+      role: role === "admin" ? "tenant" : role,
+    },
+  });
+
+  if (error || !data.user) {
+    redirect(
+      subscribersPath(`error=${encodeURIComponent(error?.message ?? "Could not create account.")}`),
+    );
+  }
+
+  const { supabase } = await requireAdmin();
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      role,
+      full_name: fullName || null,
+      phone: phone || null,
+      email,
+      subscription_plan: plan,
+    })
+    .eq("id", data.user.id);
+
+  if (profileError) {
+    await service.auth.admin.deleteUser(data.user.id);
+    redirect(subscribersPath(`error=${encodeURIComponent(profileError.message)}`));
+  }
+
+  if (sendInvite) {
+    const invite = await sendPasswordResetEmail(email);
+    if (!invite.ok) {
+      redirect(
+        subscriberPath(
+          data.user.id,
+          `error=${encodeURIComponent(invite.error ?? "Account created but invite email failed to send.")}`,
+        ),
+      );
+    }
+  }
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/subscribers");
+  redirect(
+    subscriberPath(
+      data.user.id,
+      sendInvite ? "success=account-created-invited" : "success=account-created",
+    ),
+  );
 }
 
 export async function updateSubscriberProfile(formData: FormData): Promise<void> {
@@ -245,5 +343,5 @@ export async function deleteSubscriber(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/dashboard/admin/subscribers");
-  redirect("/dashboard/admin/subscribers?success=account-deleted");
+  redirect(subscribersPath("success=account-deleted"));
 }
