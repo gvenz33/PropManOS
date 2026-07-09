@@ -6,6 +6,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+function clearResetParams() {
+  window.history.replaceState({}, "", "/reset-password");
+}
+
 export function ResetPasswordForm() {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -20,16 +24,33 @@ export function ResetPasswordForm() {
 
     async function verifySession() {
       const params = new URLSearchParams(window.location.search);
+      const tokenHash = params.get("token_hash");
+      const type = params.get("type");
       const code = params.get("code");
 
-      if (code) {
+      if (tokenHash && type === "recovery") {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        });
+        if (error) {
+          setCheckingSession(false);
+          setMessage("This reset link is invalid or has expired.");
+          return;
+        }
+        clearResetParams();
+      } else if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           setCheckingSession(false);
           setMessage("This reset link is invalid or has expired.");
           return;
         }
-        window.history.replaceState({}, "", "/reset-password");
+        clearResetParams();
+      } else if (window.location.hash.includes("access_token")) {
+        // Legacy links that passed through Supabase /verify with implicit tokens.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        clearResetParams();
       }
 
       const {

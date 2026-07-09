@@ -12,3 +12,11 @@ export function authCallbackUrl(nextPath: string) {
   const next = nextPath.startsWith("/") ? nextPath : `/${nextPath}`;
   return `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
 }
+
+export function resetPasswordUrl(tokenHash: string) {
+  const params = new URLSearchParams({
+    token_hash: tokenHash,
+    type: "recovery",
+  });
+  return `${getSiteUrl()}/reset-password?${params.toString()}`;
+}

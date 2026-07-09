@@ -13,7 +13,17 @@ export async function GET(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
+  const authError = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
   const requestedNext = safeNextPath(searchParams.get("next"));
+
+  if (authError) {
+    const detail = errorDescription
+      ? encodeURIComponent(errorDescription)
+      : encodeURIComponent("Authentication link is invalid or has expired.");
+    const recoveryNext = requestedNext === "/reset-password" ? "/reset-password" : "/login";
+    return NextResponse.redirect(`${origin}${recoveryNext}?error=${detail}`);
+  }
 
   if (!code || !supabaseUrl || !supabaseAnonKey) {
     return NextResponse.redirect(`${origin}/login?error=auth`);

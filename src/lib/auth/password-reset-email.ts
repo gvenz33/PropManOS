@@ -1,6 +1,6 @@
 import { BRAND } from "@/lib/brand";
 import { sendEmail } from "@/lib/notifications/outbound";
-import { authCallbackUrl } from "@/lib/site-url";
+import { resetPasswordUrl } from "@/lib/site-url";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export async function sendPasswordResetEmail(email: string) {
@@ -12,16 +12,13 @@ export async function sendPasswordResetEmail(email: string) {
   const { data, error } = await service.auth.admin.generateLink({
     type: "recovery",
     email,
-    options: {
-      redirectTo: authCallbackUrl("/reset-password"),
-    },
   });
 
-  if (error || !data?.properties?.action_link) {
+  if (error || !data?.properties?.hashed_token) {
     return { ok: true as const };
   }
 
-  const resetLink = data.properties.action_link;
+  const resetLink = resetPasswordUrl(data.properties.hashed_token);
   return sendEmail(
     email,
     `Reset your ${BRAND.name} password`,
