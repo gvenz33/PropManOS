@@ -22,7 +22,12 @@ export function ForgotPasswordForm() {
 
     setLoading(false);
     if (error) {
-      setMessage(error.message);
+      const rateLimited = /rate limit/i.test(error.message);
+      setMessage(
+        rateLimited
+          ? "Too many reset emails were requested. Supabase limits built-in email to about 2 per hour. Wait up to an hour and try again, or contact support for help."
+          : error.message,
+      );
       return;
     }
 
