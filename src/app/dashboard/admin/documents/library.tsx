@@ -221,28 +221,51 @@ export function PlatformDocumentLibrary({
       {orderedKinds.map((kind) => {
         const sectionDocs = grouped.get(kind) ?? [];
         const sectionIds = sectionDocs.map((doc) => doc.id);
-        const sectionSelected = sectionIds.every((id) => selected.has(id));
+        const sectionSelected =
+          sectionIds.length > 0 && sectionIds.every((id) => selected.has(id));
+        const sectionPartial =
+          sectionIds.some((id) => selected.has(id)) && !sectionSelected;
 
         return (
-          <section key={kind} className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <label className="flex items-center gap-2 text-base font-semibold">
+          <details
+            key={kind}
+            className="group/section rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm open:shadow-md"
+          >
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+              <div className="flex min-w-0 items-center gap-3">
                 <input
                   type="checkbox"
                   checked={sectionSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = sectionPartial;
+                  }}
                   onChange={() => toggleSection(sectionIds)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Select all ${sectionLabel(kind)} files`}
                 />
-                {sectionLabel(kind)}
-              </label>
-              <p className="text-xs text-[var(--muted)]">
-                {sectionDocs.length} file{sectionDocs.length === 1 ? "" : "s"}
-              </p>
-            </div>
-            <div className="space-y-2">
+                <div>
+                  <p className="text-base font-semibold">{sectionLabel(kind)}</p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {sectionDocs.length} file{sectionDocs.length === 1 ? "" : "s"}
+                    {sectionPartial || sectionSelected
+                      ? ` · ${sectionIds.filter((id) => selected.has(id)).length} selected`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-medium text-[var(--accent)] group-open/section:hidden">
+                Open section ▾
+              </span>
+              <span className="hidden text-xs font-medium text-[var(--muted)] group-open/section:inline">
+                Close section ▴
+              </span>
+            </summary>
+
+            <div className="space-y-2 border-t border-[var(--border)] px-3 py-3">
               {sectionDocs.map((doc) => (
                 <details
                   key={doc.id}
-                  className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm open:shadow-md"
+                  className="group rounded-xl border border-[var(--border)] bg-[var(--background)] open:shadow-sm"
                 >
                   <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
                     <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -257,8 +280,7 @@ export function PlatformDocumentLibrary({
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold">{doc.filename}</p>
                         <p className="text-xs text-[var(--muted)]">
-                          {sectionLabel(doc.kind)} · Uploaded{" "}
-                          {new Date(doc.created_at).toLocaleString()} · Shared with{" "}
+                          Uploaded {new Date(doc.created_at).toLocaleString()} · Shared with{" "}
                           {doc.sharedCount} landlord{doc.sharedCount === 1 ? "" : "s"}
                         </p>
                         {doc.description ? (
@@ -397,7 +419,7 @@ export function PlatformDocumentLibrary({
                 </details>
               ))}
             </div>
-          </section>
+          </details>
         );
       })}
     </div>
