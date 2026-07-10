@@ -4,7 +4,7 @@ const tabs = [
   { key: "files", label: "Files" },
   { key: "forms", label: "Rental forms" },
   { key: "rental-documents", label: "Rental documents" },
-  { key: "shared", label: "Site resources" },
+  { key: "shared", label: "Resource center" },
 ] as const;
 
 export type DocumentsTab = (typeof tabs)[number]["key"];

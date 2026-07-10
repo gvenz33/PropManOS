@@ -266,7 +266,7 @@ ${filenames.length === 1 ? "A new document has" : `${filenames.length} new docum
 
 ${fileList}
 ${message ? `\nMessage from the admin team:\n${message}\n` : ""}
-Sign in to your landlord dashboard → Documents → Site resources to download ${filenames.length === 1 ? "it" : "them"}.
+Sign in to your landlord dashboard → Documents → Resource center to download ${filenames.length === 1 ? "it" : "them"}.
 
 — ${BRAND.name}`;
 

@@ -1,4 +1,5 @@
-import { DocumentList } from "@/components/document-list";
+import { DocumentAccordionSections } from "@/components/document-accordion-sections";
+import { DOCUMENT_KIND_LABELS } from "@/lib/documents";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -43,8 +44,12 @@ export default async function TenantDocumentsPage() {
           records.
         </p>
       </div>
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <DocumentList docs={docs} emptyMessage="No documents uploaded yet. Your landlord can add files to your tenant profile." />
+      <section className="space-y-4">
+        <DocumentAccordionSections
+          docs={docs}
+          kindLabels={DOCUMENT_KIND_LABELS}
+          emptyMessage="No documents uploaded yet. Your landlord can add files to your tenant profile."
+        />
       </section>
       <p className="text-sm text-[var(--muted)]">
         Rental applications and forms sent by email or text are separate from these stored files.

@@ -1,11 +1,16 @@
 import { ActionMessage } from "@/components/action-message";
-import { DocumentList } from "@/components/document-list";
-import { noticeTypeLabel } from "@/lib/documents";
+import { DocumentAccordionSections } from "@/components/document-accordion-sections";
+import {
+  DOCUMENT_KIND_LABELS,
+  noticeTypeLabel,
+  PLATFORM_KIND_LABELS,
+} from "@/lib/documents";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DocumentsTabNav, type DocumentsTab } from "./documents-tab-nav";
 import { GenerateNoticeForm } from "./generate-notice-form";
+import { ResourceCenter } from "./resource-center";
 import { OwnerInternalUpload, OwnerRentalFormUpload } from "./upload";
 
 const validTabs = ["files", "forms", "rental-documents", "shared"] as const;
@@ -14,12 +19,33 @@ function isTab(value: string | undefined): value is DocumentsTab {
   return validTabs.includes(value as DocumentsTab);
 }
 
+function metadataDescription(metadata: unknown) {
+  if (
+    typeof metadata === "object" &&
+    metadata &&
+    "description" in metadata &&
+    typeof (metadata as { description?: unknown }).description === "string"
+  ) {
+    return (metadata as { description: string }).description;
+  }
+  return null;
+}
+
+function propertyName(properties: unknown): string | null {
+  if (!properties) return null;
+  if (Array.isArray(properties)) {
+    const first = properties[0] as { name?: string } | undefined;
+    return first?.name ?? null;
+  }
+  return (properties as { name?: string }).name ?? null;
+}
+
 export default async function OwnerDocumentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; success?: string; error?: string }>;
+  searchParams: Promise<{ tab?: string; success?: string; error?: string; count?: string }>;
 }) {
-  const { tab: tabParam, success, error } = await searchParams;
+  const { tab: tabParam, success, error, count } = await searchParams;
   const tab = isTab(tabParam) ? tabParam : "files";
 
   const supabase = await createClient();
@@ -63,9 +89,24 @@ export default async function OwnerDocumentsPage({
 
   const { data: sharedRows } = await supabase
     .from("platform_document_shares")
-    .select("shared_at, message, documents(id, filename, kind, created_at)")
+    .select("shared_at, message, documents(id, filename, kind, created_at, metadata)")
     .eq("owner_id", user.id)
     .order("shared_at", { ascending: false });
+
+  const { data: catalogDocs } = await supabase
+    .from("documents")
+    .select("id, filename, kind, created_at, metadata")
+    .eq("source", "platform")
+    .order("created_at", { ascending: false });
+
+  const libraryIds = new Set(
+    (sharedRows ?? [])
+      .map((row) => {
+        const doc = Array.isArray(row.documents) ? row.documents[0] : row.documents;
+        return doc?.id;
+      })
+      .filter(Boolean) as string[],
+  );
 
   const leaseOptions =
     leaseRows?.map((lease) => {
@@ -90,11 +131,42 @@ export default async function OwnerDocumentsPage({
       return {
         id: doc.id,
         filename: doc.filename,
-        kind: doc.notice_type ? noticeTypeLabel(doc.notice_type) : doc.kind,
+        kind: doc.notice_type ?? "notice",
         created_at: doc.created_at,
         subtitle: tenant,
       };
     }) ?? [];
+
+  const noticeKindLabels: Record<string, string> = {
+    "3_day": noticeTypeLabel("3_day"),
+    "30_day": noticeTypeLabel("30_day"),
+    "60_day": noticeTypeLabel("60_day"),
+    notice: "Notice",
+  };
+
+  const libraryDocs = (sharedRows ?? []).flatMap((row) => {
+    const doc = Array.isArray(row.documents) ? row.documents[0] : row.documents;
+    if (!doc) return [];
+    return [
+      {
+        id: doc.id as string,
+        filename: doc.filename as string,
+        kind: doc.kind as string,
+        created_at: row.shared_at as string,
+        description: (row.message as string | null) || metadataDescription(doc.metadata),
+      },
+    ];
+  });
+
+  const catalog =
+    catalogDocs?.map((doc) => ({
+      id: doc.id,
+      filename: doc.filename,
+      kind: doc.kind,
+      created_at: doc.created_at,
+      description: metadataDescription(doc.metadata),
+      inLibrary: libraryIds.has(doc.id),
+    })) ?? [];
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -103,23 +175,35 @@ export default async function OwnerDocumentsPage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
         <p className="mt-1 text-[var(--muted)]">
-          Internal files, rental forms, generated notices, and resources shared by the site admin.
+          Internal files, rental forms, generated notices, and the site resource center.
         </p>
       </div>
 
       <DocumentsTabNav active={tab} />
-      <ActionMessage success={success} error={error} />
+      <ActionMessage success={success} error={error} count={count} />
 
       {tab === "files" ? (
         <section className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">Internal files</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Portfolio-wide private records. Unit files also live on each property unit card.
+              Portfolio-wide private records, grouped by document type. Unit files also live on each
+              property unit card.
             </p>
           </div>
           <OwnerInternalUpload />
-          <DocumentList docs={internalDocs ?? []} deletable emptyMessage="No internal files yet." />
+          <DocumentAccordionSections
+            docs={(internalDocs ?? []).map((doc) => ({
+              id: doc.id,
+              filename: doc.filename,
+              kind: doc.kind,
+              created_at: doc.created_at,
+              subtitle: propertyName(doc.properties),
+            }))}
+            deletable
+            kindLabels={DOCUMENT_KIND_LABELS}
+            emptyMessage="No internal files yet."
+          />
         </section>
       ) : null}
 
@@ -128,14 +212,21 @@ export default async function OwnerDocumentsPage({
           <div>
             <h2 className="text-lg font-semibold">Rental forms</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Portfolio-wide form templates. To email or text a form, upload it on the property page
-              and use Send.
+              Portfolio-wide form templates, grouped by type. To email or text a form, upload it on
+              the property page and use Send.
             </p>
           </div>
           <OwnerRentalFormUpload />
-          <DocumentList
-            docs={rentalForms ?? []}
+          <DocumentAccordionSections
+            docs={(rentalForms ?? []).map((doc) => ({
+              id: doc.id,
+              filename: doc.filename,
+              kind: doc.kind,
+              created_at: doc.created_at,
+              subtitle: propertyName(doc.properties),
+            }))}
             deletable
+            kindLabels={DOCUMENT_KIND_LABELS}
             emptyMessage="No rental forms at portfolio level."
           />
           <p className="text-sm text-[var(--muted)]">
@@ -171,77 +262,45 @@ export default async function OwnerDocumentsPage({
 
           <section className="space-y-4">
             <h2 className="text-lg font-semibold">Generated notices</h2>
-            {noticeList.length ? (
-              <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
-                {noticeList.map((doc) => (
-                  <li
-                    key={doc.id}
-                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">{doc.filename}</p>
-                      <p className="text-xs text-[var(--muted)]">
-                        {doc.kind} · {doc.subtitle} · {new Date(doc.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <Link
-                      href={`/api/documents/${doc.id}/download`}
-                      className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold hover:bg-[var(--muted-bg)]"
-                    >
-                      Download
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-[var(--muted)]">No generated notices yet.</p>
-            )}
+            <DocumentAccordionSections
+              docs={noticeList}
+              kindLabels={noticeKindLabels}
+              kindOrder={["3_day", "30_day", "60_day", "notice"]}
+              emptyMessage="No generated notices yet."
+            />
           </section>
         </div>
       ) : null}
 
       {tab === "shared" ? (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold">Site resources</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Documents uploaded and shared with you by the {` `}
-              site admin team.
-            </p>
-          </div>
-          {sharedRows?.length ? (
-            <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
-              {sharedRows.map((row) => {
-                const doc = Array.isArray(row.documents) ? row.documents[0] : row.documents;
-                if (!doc) return null;
-                return (
-                  <li
-                    key={`${doc.id}-${row.shared_at}`}
-                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">{doc.filename}</p>
-                      <p className="text-xs text-[var(--muted)]">
-                        Shared {new Date(row.shared_at).toLocaleString()}
-                      </p>
-                      {row.message ? (
-                        <p className="mt-1 text-xs text-[var(--muted)]">{row.message}</p>
-                      ) : null}
-                    </div>
-                    <Link
-                      href={`/api/documents/${doc.id}/download`}
-                      className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold hover:bg-[var(--muted-bg)]"
-                    >
-                      Download
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="text-sm text-[var(--muted)]">No shared resources yet.</p>
-          )}
-        </section>
+        <div className="space-y-10">
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Resource center</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Browse documents published by the site admin and add them to your library — no need
+                to wait for a manual share.
+              </p>
+            </div>
+            <ResourceCenter docs={catalog} />
+          </section>
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">My library</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Resources you added from the center, plus anything shared with you directly.
+              </p>
+            </div>
+            <DocumentAccordionSections
+              docs={libraryDocs}
+              removableFromLibrary
+              kindLabels={PLATFORM_KIND_LABELS}
+              kindOrder={Object.keys(PLATFORM_KIND_LABELS)}
+              emptyMessage="Nothing in your library yet. Add documents from the Resource center above."
+            />
+          </section>
+        </div>
       ) : null}
     </div>
   );
