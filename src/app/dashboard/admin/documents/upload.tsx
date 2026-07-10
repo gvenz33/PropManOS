@@ -1,17 +1,9 @@
-"use client";
-
+import { PLATFORM_KIND_OPTIONS } from "./library";
 import { registerPlatformDocument } from "@/app/dashboard/admin/documents/actions";
 import { createClient } from "@/lib/supabase/client";
 import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-const KIND_OPTIONS = [
-  { value: "other", label: "Resource / guide" },
-  { value: "notice", label: "Notice template" },
-  { value: "lease", label: "Lease template" },
-  { value: "rental_application", label: "Application template" },
-] as const;
 
 export function AdminDocumentUpload() {
   const router = useRouter();
@@ -135,7 +127,7 @@ export function AdminDocumentUpload() {
             defaultValue="other"
             className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
           >
-            {KIND_OPTIONS.map((option) => (
+            {PLATFORM_KIND_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

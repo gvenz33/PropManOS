@@ -29,6 +29,24 @@ function documentsPath(query?: string) {
   return `/dashboard/admin/documents${query ? `?${query}` : ""}`;
 }
 
+const PLATFORM_KINDS = new Set(["other", "notice", "lease", "rental_application"]);
+
+function parseDocumentIds(formData: FormData) {
+  const fromList = formData
+    .getAll("document_ids")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  if (fromList.length) return [...new Set(fromList)];
+
+  const csv = String(formData.get("document_ids_csv") ?? "").trim();
+  if (!csv) return [];
+  return [...new Set(csv.split(",").map((value) => value.trim()).filter(Boolean))];
+}
+
+function isPlatformKind(value: string) {
+  return PLATFORM_KINDS.has(value);
+}
+
 export async function registerPlatformDocument(params: {
   storagePath: string;
   filename: string;
@@ -176,23 +194,89 @@ export async function deletePlatformDocument(formData: FormData): Promise<void> 
   redirect(documentsPath("success=doc-deleted"));
 }
 
+export async function updatePlatformDocumentKind(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const documentId = String(formData.get("document_id") ?? "").trim();
+  const kind = String(formData.get("kind") ?? "").trim();
+
+  if (!documentId || !isPlatformKind(kind)) {
+    redirect(documentsPath(`error=${encodeURIComponent("Choose a valid document type.")}`));
+  }
+
+  const service = createServiceClient();
+  if (!service) {
+    redirect(documentsPath(`error=${encodeURIComponent("Update is temporarily unavailable.")}`));
+  }
+
+  const { error } = await service
+    .from("documents")
+    .update({ kind })
+    .eq("id", documentId)
+    .eq("source", "platform");
+
+  if (error) {
+    redirect(documentsPath(`error=${encodeURIComponent(error.message)}`));
+  }
+
+  revalidatePath("/dashboard/admin/documents");
+  redirect(documentsPath("success=doc-type-updated"));
+}
+
+export async function bulkUpdatePlatformDocumentKinds(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const documentIds = parseDocumentIds(formData);
+  const kind = String(formData.get("kind") ?? "").trim();
+
+  if (!documentIds.length) {
+    redirect(documentsPath(`error=${encodeURIComponent("Select at least one document.")}`));
+  }
+  if (!isPlatformKind(kind)) {
+    redirect(documentsPath(`error=${encodeURIComponent("Choose a valid document type.")}`));
+  }
+
+  const service = createServiceClient();
+  if (!service) {
+    redirect(documentsPath(`error=${encodeURIComponent("Update is temporarily unavailable.")}`));
+  }
+
+  const { error } = await service
+    .from("documents")
+    .update({ kind })
+    .in("id", documentIds)
+    .eq("source", "platform");
+
+  if (error) {
+    redirect(documentsPath(`error=${encodeURIComponent(error.message)}`));
+  }
+
+  revalidatePath("/dashboard/admin/documents");
+  redirect(documentsPath(`success=docs-type-updated&count=${documentIds.length}`));
+}
+
 async function notifyLandlordShare(
   ownerEmail: string,
   ownerName: string,
-  filename: string,
+  filenames: string[],
   message: string | null,
 ) {
+  const fileList = filenames.map((name) => `• ${name}`).join("\n");
   const body = `Hello${ownerName ? ` ${ownerName}` : ""},
 
-A new document has been shared with you on ${BRAND.name}:
+${filenames.length === 1 ? "A new document has" : `${filenames.length} new documents have`} been shared with you on ${BRAND.name}:
 
-${filename}
+${fileList}
 ${message ? `\nMessage from the admin team:\n${message}\n` : ""}
-Sign in to your landlord dashboard → Documents → Site resources to download it.
+Sign in to your landlord dashboard → Documents → Site resources to download ${filenames.length === 1 ? "it" : "them"}.
 
 — ${BRAND.name}`;
 
-  await sendEmail(ownerEmail, `New document shared on ${BRAND.name}`, body);
+  await sendEmail(
+    ownerEmail,
+    filenames.length === 1
+      ? `New document shared on ${BRAND.name}`
+      : `${filenames.length} documents shared on ${BRAND.name}`,
+    body,
+  );
 }
 
 export async function sharePlatformDocument(formData: FormData): Promise<void> {
@@ -249,7 +333,7 @@ export async function sharePlatformDocument(formData: FormData): Promise<void> {
     await notifyLandlordShare(
       owner.email,
       owner.full_name ?? "",
-      doc.filename,
+      [doc.filename],
       message ?? `Shared by ${profile.full_name || "site admin"}`,
     );
   }
@@ -315,7 +399,7 @@ export async function sharePlatformDocumentBulk(formData: FormData): Promise<voi
       await notifyLandlordShare(
         owner.email,
         owner.full_name ?? "",
-        doc.filename,
+        [doc.filename],
         message ?? `Shared by ${profile.full_name || "site admin"}`,
       );
     }
@@ -324,4 +408,126 @@ export async function sharePlatformDocumentBulk(formData: FormData): Promise<voi
   revalidatePath("/dashboard/admin/documents");
   revalidatePath("/dashboard/owner/documents");
   redirect(documentsPath(`success=doc-shared-bulk&count=${owners.length}`));
+}
+
+export async function bulkSharePlatformDocuments(formData: FormData): Promise<void> {
+  const { user, profile } = await requireAdmin();
+  const documentIds = parseDocumentIds(formData);
+  const ownerId = String(formData.get("owner_id") ?? "").trim();
+  const shareMode = String(formData.get("share_mode") ?? "").trim(); // "one" | "all"
+  const message = String(formData.get("message") ?? "").trim() || null;
+  const notify = formData.get("notify") === "on";
+
+  if (!documentIds.length) {
+    redirect(documentsPath(`error=${encodeURIComponent("Select at least one document.")}`));
+  }
+
+  const service = createServiceClient();
+  if (!service) {
+    redirect(documentsPath(`error=${encodeURIComponent("Sharing is temporarily unavailable.")}`));
+  }
+
+  const { data: docs } = await service
+    .from("documents")
+    .select("id, filename, source")
+    .in("id", documentIds)
+    .eq("source", "platform");
+
+  if (!docs?.length) {
+    redirect(documentsPath(`error=${encodeURIComponent("Selected documents were not found.")}`));
+  }
+
+  const filenames = docs.map((doc) => doc.filename);
+  const now = new Date().toISOString();
+
+  if (shareMode === "one" || ownerId) {
+    if (!ownerId) {
+      redirect(documentsPath(`error=${encodeURIComponent("Choose a landlord to share with.")}`));
+    }
+
+    const { data: owner } = await service
+      .from("profiles")
+      .select("id, email, full_name, role")
+      .eq("id", ownerId)
+      .eq("role", "owner")
+      .maybeSingle();
+    if (!owner?.email) {
+      redirect(documentsPath(`error=${encodeURIComponent("Landlord not found.")}`));
+    }
+
+    const rows = docs.map((doc) => ({
+      document_id: doc.id,
+      owner_id: ownerId,
+      shared_by: user.id,
+      message,
+      shared_at: now,
+    }));
+
+    const { error } = await service.from("platform_document_shares").upsert(rows, {
+      onConflict: "document_id,owner_id",
+    });
+    if (error) {
+      redirect(documentsPath(`error=${encodeURIComponent(error.message)}`));
+    }
+
+    if (notify) {
+      await notifyLandlordShare(
+        owner.email,
+        owner.full_name ?? "",
+        filenames,
+        message ?? `Shared by ${profile.full_name || "site admin"}`,
+      );
+    }
+
+    revalidatePath("/dashboard/admin/documents");
+    revalidatePath("/dashboard/owner/documents");
+    redirect(documentsPath(`success=docs-shared&count=${docs.length}`));
+  }
+
+  const { data: owners } = await service
+    .from("profiles")
+    .select("id, email, full_name")
+    .eq("role", "owner")
+    .not("email", "is", null);
+
+  if (!owners?.length) {
+    redirect(documentsPath(`error=${encodeURIComponent("No landlord accounts to share with.")}`));
+  }
+
+  const rows = owners.flatMap((owner) =>
+    docs.map((doc) => ({
+      document_id: doc.id,
+      owner_id: owner.id,
+      shared_by: user.id,
+      message,
+      shared_at: now,
+    })),
+  );
+
+  const { error } = await service.from("platform_document_shares").upsert(rows, {
+    onConflict: "document_id,owner_id",
+  });
+  if (error) {
+    redirect(documentsPath(`error=${encodeURIComponent(error.message)}`));
+  }
+
+  if (notify) {
+    for (const owner of owners) {
+      if (!owner.email) continue;
+      await notifyLandlordShare(
+        owner.email,
+        owner.full_name ?? "",
+        filenames,
+        message ?? `Shared by ${profile.full_name || "site admin"}`,
+      );
+    }
+  }
+
+  revalidatePath("/dashboard/admin/documents");
+  revalidatePath("/dashboard/owner/documents");
+  redirect(
+    documentsPath(
+      `success=docs-shared-bulk&count=${docs.length}&landlords=${owners.length}`,
+    ),
+  );
 }

@@ -30,6 +30,9 @@ const successCopy: Record<string, string> = {
   "docs-uploaded": "Documents uploaded.",
   "doc-deleted": "Document deleted.",
   "doc-shared": "Document shared with landlord.",
+  "docs-shared": "Selected documents shared with landlord.",
+  "doc-type-updated": "Document type updated.",
+  "docs-type-updated": "Document types updated.",
   sent: "If an account exists for that email, we sent a password reset link.",
   submitted: "Maintenance request submitted.",
   waived: "Late fee waived.",
@@ -68,6 +71,24 @@ function buildMessage(success: string, count?: string | null) {
       return `Uploaded ${n} document${n === 1 ? "" : "s"}.`;
     }
     return "Documents uploaded.";
+  }
+  if (success === "docs-type-updated") {
+    if (Number.isFinite(n)) {
+      return `Updated document type for ${n} file${n === 1 ? "" : "s"}.`;
+    }
+    return "Document types updated.";
+  }
+  if (success === "docs-shared") {
+    if (Number.isFinite(n)) {
+      return `Shared ${n} document${n === 1 ? "" : "s"} with landlord.`;
+    }
+    return "Selected documents shared with landlord.";
+  }
+  if (success === "docs-shared-bulk") {
+    if (Number.isFinite(n)) {
+      return `Shared ${n} document${n === 1 ? "" : "s"} with all landlords.`;
+    }
+    return "Selected documents shared with all landlords.";
   }
   return successCopy[success] ?? "Saved.";
 }
