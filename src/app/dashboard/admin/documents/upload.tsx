@@ -1,9 +1,11 @@
-import { PLATFORM_KIND_OPTIONS } from "./library";
+"use client";
+
 import { registerPlatformDocument } from "@/app/dashboard/admin/documents/actions";
 import { createClient } from "@/lib/supabase/client";
 import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PLATFORM_KIND_OPTIONS } from "./kinds";
 
 export function AdminDocumentUpload() {
   const router = useRouter();

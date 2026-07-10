@@ -12,6 +12,7 @@ import {
   sharePlatformDocumentBulk,
   updatePlatformDocumentKind,
 } from "./actions";
+import { PLATFORM_KIND_LABELS, PLATFORM_KIND_OPTIONS } from "./kinds";
 
 type OwnerOption = {
   id: string;
@@ -30,19 +31,8 @@ type PlatformDoc = {
 
 const SECTION_ORDER = ["other", "notice", "lease", "rental_application"] as const;
 
-export const PLATFORM_KIND_OPTIONS = [
-  { value: "other", label: "Resource / guide" },
-  { value: "notice", label: "Notice template" },
-  { value: "lease", label: "Lease template" },
-  { value: "rental_application", label: "Application template" },
-] as const;
-
-const SECTION_LABELS: Record<string, string> = Object.fromEntries(
-  PLATFORM_KIND_OPTIONS.map((option) => [option.value, option.label]),
-);
-
 function sectionLabel(kind: string) {
-  return SECTION_LABELS[kind] ?? documentKindLabel(kind);
+  return PLATFORM_KIND_LABELS[kind] ?? documentKindLabel(kind);
 }
 
 export function PlatformDocumentLibrary({
