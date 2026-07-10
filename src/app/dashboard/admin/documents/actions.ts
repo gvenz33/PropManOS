@@ -29,7 +29,40 @@ function documentsPath(query?: string) {
   return `/dashboard/admin/documents${query ? `?${query}` : ""}`;
 }
 
+export async function registerPlatformDocument(params: {
+  storagePath: string;
+  filename: string;
+  kind: string;
+  description?: string | null;
+}): Promise<{ ok?: true; error?: string }> {
+  const { user } = await requireAdmin();
+
+  if (!params.storagePath.startsWith("platform/")) {
+    return { error: "Invalid storage path." };
+  }
+
+  const service = createServiceClient();
+  if (!service) return { error: "Upload is temporarily unavailable." };
+
+  const { error } = await service.from("documents").insert({
+    owner_id: user.id,
+    uploaded_by: user.id,
+    storage_path: params.storagePath,
+    filename: params.filename,
+    kind: params.kind || "other",
+    category: "internal",
+    source: "platform",
+    metadata: params.description ? { description: params.description } : {},
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/admin/documents");
+  return { ok: true };
+}
+
 export async function uploadPlatformDocument(formData: FormData): Promise<void> {
+  // Kept for compatibility; prefer client-side AdminDocumentUpload for bulk uploads.
   const { user } = await requireAdmin();
   const files = formData
     .getAll("file")
@@ -39,6 +72,17 @@ export async function uploadPlatformDocument(formData: FormData): Promise<void> 
 
   if (!files.length) {
     redirect(documentsPath(`error=${encodeURIComponent("Choose one or more files to upload.")}`));
+  }
+
+  // Large multi-file FormData posts often fail on Vercel — limit this fallback path.
+  if (files.length > 3) {
+    redirect(
+      documentsPath(
+        `error=${encodeURIComponent(
+          "For more than 3 files, use the bulk uploader on this page (files upload one at a time).",
+        )}`,
+      ),
+    );
   }
 
   const service = createServiceClient();
@@ -88,19 +132,7 @@ export async function uploadPlatformDocument(formData: FormData): Promise<void> 
 
   if (uploaded === 0) {
     redirect(
-      documentsPath(
-        `error=${encodeURIComponent(lastError ?? "Could not upload files.")}`,
-      ),
-    );
-  }
-
-  if (lastError && uploaded < files.length) {
-    redirect(
-      documentsPath(
-        `success=docs-uploaded&count=${uploaded}&error=${encodeURIComponent(
-          `Uploaded ${uploaded} of ${files.length}. Some files failed: ${lastError}`,
-        )}`,
-      ),
+      documentsPath(`error=${encodeURIComponent(lastError ?? "Could not upload files.")}`),
     );
   }
 
