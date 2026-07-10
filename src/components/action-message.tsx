@@ -27,6 +27,7 @@ const successCopy: Record<string, string> = {
   "account-created-invited": "Account created and invite email sent.",
   "notice-generated": "Notice PDF generated and saved.",
   "doc-uploaded": "Document uploaded.",
+  "docs-uploaded": "Documents uploaded.",
   "doc-deleted": "Document deleted.",
   "doc-shared": "Document shared with landlord.",
   sent: "If an account exists for that email, we sent a password reset link.",
@@ -61,6 +62,12 @@ function buildMessage(success: string, count?: string | null) {
       return `Document shared with ${n} landlord${n === 1 ? "" : "s"}.`;
     }
     return "Document shared with all landlords.";
+  }
+  if (success === "docs-uploaded") {
+    if (Number.isFinite(n)) {
+      return `Uploaded ${n} document${n === 1 ? "" : "s"}.`;
+    }
+    return "Documents uploaded.";
   }
   return successCopy[success] ?? "Saved.";
 }

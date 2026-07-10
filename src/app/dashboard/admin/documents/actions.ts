@@ -1,7 +1,6 @@
 "use server";
 
 import { BRAND } from "@/lib/brand";
-import { documentKindLabel } from "@/lib/documents";
 import { sendEmail } from "@/lib/notifications/outbound";
 import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -32,12 +31,14 @@ function documentsPath(query?: string) {
 
 export async function uploadPlatformDocument(formData: FormData): Promise<void> {
   const { user } = await requireAdmin();
-  const file = formData.get("file");
+  const files = formData
+    .getAll("file")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
   const kind = String(formData.get("kind") ?? "other").trim();
   const description = String(formData.get("description") ?? "").trim();
 
-  if (!(file instanceof File) || file.size === 0) {
-    redirect(documentsPath(`error=${encodeURIComponent("Choose a file to upload.")}`));
+  if (!files.length) {
+    redirect(documentsPath(`error=${encodeURIComponent("Choose one or more files to upload.")}`));
   }
 
   const service = createServiceClient();
@@ -45,37 +46,71 @@ export async function uploadPlatformDocument(formData: FormData): Promise<void> 
     redirect(documentsPath(`error=${encodeURIComponent("Upload is temporarily unavailable.")}`));
   }
 
-  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-  const storagePath = `platform/${user.id}/${crypto.randomUUID()}-${safeName}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  let uploaded = 0;
+  let lastError: string | null = null;
 
-  const { error: uploadError } = await service.storage
-    .from(PROP_MAN_STORAGE_BUCKET)
-    .upload(storagePath, buffer, {
-      contentType: file.type || "application/octet-stream",
-      upsert: false,
+  for (const file of files) {
+    const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+    const storagePath = `platform/${user.id}/${crypto.randomUUID()}-${safeName}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    const { error: uploadError } = await service.storage
+      .from(PROP_MAN_STORAGE_BUCKET)
+      .upload(storagePath, buffer, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+    if (uploadError) {
+      lastError = uploadError.message;
+      continue;
+    }
+
+    const { error } = await service.from("documents").insert({
+      owner_id: user.id,
+      uploaded_by: user.id,
+      storage_path: storagePath,
+      filename: file.name,
+      kind,
+      category: "internal",
+      source: "platform",
+      metadata: description ? { description } : {},
     });
-  if (uploadError) {
-    redirect(documentsPath(`error=${encodeURIComponent(uploadError.message)}`));
-  }
+    if (error) {
+      await service.storage.from(PROP_MAN_STORAGE_BUCKET).remove([storagePath]);
+      lastError = error.message;
+      continue;
+    }
 
-  const { error } = await service.from("documents").insert({
-    owner_id: user.id,
-    uploaded_by: user.id,
-    storage_path: storagePath,
-    filename: file.name,
-    kind,
-    category: "internal",
-    source: "platform",
-    metadata: description ? { description } : {},
-  });
-  if (error) {
-    await service.storage.from(PROP_MAN_STORAGE_BUCKET).remove([storagePath]);
-    redirect(documentsPath(`error=${encodeURIComponent(error.message)}`));
+    uploaded += 1;
   }
 
   revalidatePath("/dashboard/admin/documents");
-  redirect(documentsPath("success=doc-uploaded"));
+
+  if (uploaded === 0) {
+    redirect(
+      documentsPath(
+        `error=${encodeURIComponent(lastError ?? "Could not upload files.")}`,
+      ),
+    );
+  }
+
+  if (lastError && uploaded < files.length) {
+    redirect(
+      documentsPath(
+        `success=docs-uploaded&count=${uploaded}&error=${encodeURIComponent(
+          `Uploaded ${uploaded} of ${files.length}. Some files failed: ${lastError}`,
+        )}`,
+      ),
+    );
+  }
+
+  redirect(
+    documentsPath(
+      uploaded === 1
+        ? "success=doc-uploaded"
+        : `success=docs-uploaded&count=${uploaded}`,
+    ),
+  );
 }
 
 export async function deletePlatformDocument(formData: FormData): Promise<void> {

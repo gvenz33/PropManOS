@@ -63,17 +63,21 @@ export default async function AdminDocumentsPage({
       <ActionMessage success={success} error={error} count={count} />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Upload document</h2>
+        <h2 className="text-lg font-semibold">Upload documents</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Select one or many files. The same document type and description apply to all.
+        </p>
         <form action={uploadPlatformDocument} className="mt-4 space-y-4">
           <div>
             <label htmlFor="file" className="text-sm font-medium">
-              File
+              Files
             </label>
             <input
               id="file"
               name="file"
               type="file"
               required
+              multiple
               accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.txt,.xlsx,.csv"
               className="mt-1 block w-full text-sm"
             />
@@ -109,7 +113,7 @@ export default async function AdminDocumentsPage({
             type="submit"
             className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
           >
-            Upload
+            Upload files
           </button>
         </form>
       </section>

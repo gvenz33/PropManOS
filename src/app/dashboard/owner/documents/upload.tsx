@@ -6,7 +6,7 @@ import { INTERNAL_DOCUMENT_KINDS, RENTAL_FORM_KINDS, kindOptionsFrom } from "@/l
 export function OwnerInternalUpload() {
   return (
     <DocumentUpload
-      title="Upload internal file"
+      title="Upload internal files"
       category="internal"
       kindOptions={kindOptionsFrom(INTERNAL_DOCUMENT_KINDS)}
     />
@@ -16,7 +16,7 @@ export function OwnerInternalUpload() {
 export function OwnerRentalFormUpload() {
   return (
     <DocumentUpload
-      title="Upload rental form"
+      title="Upload rental forms"
       category="rental_form"
       defaultKind="rental_application"
       kindOptions={kindOptionsFrom(RENTAL_FORM_KINDS)}
