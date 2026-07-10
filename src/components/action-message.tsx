@@ -25,6 +25,10 @@ const successCopy: Record<string, string> = {
   "account-deleted": "Account deleted.",
   "account-created": "Account created.",
   "account-created-invited": "Account created and invite email sent.",
+  "notice-generated": "Notice PDF generated and saved.",
+  "doc-uploaded": "Document uploaded.",
+  "doc-deleted": "Document deleted.",
+  "doc-shared": "Document shared with landlord.",
   sent: "If an account exists for that email, we sent a password reset link.",
   submitted: "Maintenance request submitted.",
   waived: "Late fee waived.",
@@ -51,6 +55,12 @@ function buildMessage(success: string, count?: string | null) {
         : `Applied late rules to ${n} invoice${n === 1 ? "" : "s"}.`;
     }
     return "Late fees applied.";
+  }
+  if (success === "doc-shared-bulk") {
+    if (Number.isFinite(n)) {
+      return `Document shared with ${n} landlord${n === 1 ? "" : "s"}.`;
+    }
+    return "Document shared with all landlords.";
   }
   return successCopy[success] ?? "Saved.";
 }

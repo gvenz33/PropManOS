@@ -8,6 +8,7 @@ import { signOutAction } from "../actions";
 const links = [
   { href: "/dashboard/admin", label: "Overview" },
   { href: "/dashboard/admin/subscribers", label: "Subscribers" },
+  { href: "/dashboard/admin/documents", label: "Documents" },
   { href: "/dashboard/admin/tools", label: "Tools" },
   { href: "/dashboard/admin/settings", label: "Account" },
 ];

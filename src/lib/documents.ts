@@ -50,6 +50,19 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   rental_form: "Rental form",
 };
 
+export const NOTICE_TYPES = ["3_day", "30_day", "60_day"] as const;
+export type NoticeType = (typeof NOTICE_TYPES)[number];
+
+export const NOTICE_TYPE_LABELS: Record<NoticeType, string> = {
+  "3_day": "3-day notice (pay rent or quit)",
+  "30_day": "30-day notice (terminate tenancy)",
+  "60_day": "60-day notice (terminate tenancy)",
+};
+
+export function noticeTypeLabel(value: string) {
+  return NOTICE_TYPE_LABELS[value as NoticeType] ?? value;
+}
+
 export function documentKindLabel(kind: string): string {
   return DOCUMENT_KIND_LABELS[kind as DocumentKind] ?? kind;
 }

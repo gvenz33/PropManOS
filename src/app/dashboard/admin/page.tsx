@@ -78,6 +78,12 @@ export default async function AdminOverviewPage() {
               All subscribers
             </Link>
             <Link
+              href="/dashboard/admin/documents"
+              className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold"
+            >
+              Documents
+            </Link>
+            <Link
               href="/dashboard/admin/tools"
               className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold"
             >

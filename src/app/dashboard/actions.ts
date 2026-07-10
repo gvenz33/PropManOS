@@ -2,7 +2,7 @@
 
 import { BRAND } from "@/lib/brand";
 import { formatUnitAddress, upsertTenantCrmContact } from "@/lib/crm";
-import { documentKindLabel } from "@/lib/documents";
+import { documentKindLabel, NOTICE_TYPES, type NoticeType } from "@/lib/documents";
 import { computeInvoice, statusAfterPayment } from "@/lib/invoices/compute";
 import {
   buildInvoiceEmail,
@@ -10,6 +10,11 @@ import {
   fetchInvoiceDocumentData,
   invoiceFilename,
 } from "@/lib/invoices/document";
+import {
+  buildNoticePdf,
+  fetchNoticeDocumentData,
+  noticeFilename,
+} from "@/lib/notices/document";
 import { parseDollarsToCents } from "@/lib/money";
 import { isRepairPriority, isRepairStatus } from "@/lib/repair-requests";
 import { sendEmail, sendSms } from "@/lib/notifications/outbound";
@@ -41,6 +46,10 @@ function unitPath(propertyId: string, unitId: string, query?: string) {
 
 function tenantPath(propertyId: string, leaseId: string, query?: string) {
   return `/dashboard/owner/properties/${propertyId}/tenants/${leaseId}${query ? `?${query}` : ""}`;
+}
+
+function ownerDocumentsPath(query?: string) {
+  return `/dashboard/owner/documents${query ? `?${query}` : ""}`;
 }
 
 export async function signOutAction() {
@@ -1040,6 +1049,9 @@ export async function registerDocument(params: {
   storagePath: string;
   filename: string;
   kind: string;
+  noticeType?: NoticeType | null;
+  source?: "owner" | "platform";
+  metadata?: Record<string, unknown>;
 }) {
   const supabase = await createClient();
   const {
@@ -1108,6 +1120,9 @@ export async function registerDocument(params: {
     filename: params.filename,
     kind: params.kind,
     category: params.category,
+    source: params.source ?? "owner",
+    notice_type: params.noticeType ?? null,
+    metadata: params.metadata ?? {},
   });
   if (error) return { error: error.message };
   revalidatePath("/dashboard/owner/documents");
@@ -1314,4 +1329,96 @@ export async function updateRepairRequestStatus(formData: FormData): Promise<voi
 
   revalidatePath("/dashboard/owner/repairs");
   revalidatePath("/dashboard/tenant/repairs");
+}
+
+function isNoticeType(value: string): value is NoticeType {
+  return NOTICE_TYPES.includes(value as NoticeType);
+}
+
+export async function generateNoticeAction(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const leaseId = String(formData.get("lease_id") ?? "").trim();
+  const noticeType = String(formData.get("notice_type") ?? "");
+  const noticeDate =
+    String(formData.get("notice_date") ?? "").trim() || new Date().toISOString().slice(0, 10);
+  const amountOwedRaw = String(formData.get("amount_owed_dollars") ?? "").trim();
+  const additionalNotes = String(formData.get("additional_notes") ?? "").trim();
+
+  const tabQuery = "tab=rental-documents";
+  if (!leaseId || !isNoticeType(noticeType)) {
+    redirect(
+      ownerDocumentsPath(`${tabQuery}&error=${encodeURIComponent("Choose a tenant and notice type.")}`),
+    );
+  }
+
+  const { data: ownedLease } = await supabase
+    .from("leases")
+    .select("id, units!inner(properties!inner(owner_id))")
+    .eq("id", leaseId)
+    .eq("units.properties.owner_id", user.id)
+    .maybeSingle();
+
+  if (!ownedLease) {
+    redirect(
+      ownerDocumentsPath(`${tabQuery}&error=${encodeURIComponent("Tenant lease not found.")}`),
+    );
+  }
+
+  let amountOwedCents: number | null = null;
+  if (noticeType === "3_day" && amountOwedRaw) {
+    amountOwedCents = parseDollarsToCents(amountOwedRaw);
+    if (amountOwedCents === null) {
+      redirect(
+        ownerDocumentsPath(`${tabQuery}&error=${encodeURIComponent("Enter a valid amount owed.")}`),
+      );
+    }
+  }
+
+  const noticeData = await fetchNoticeDocumentData(supabase, leaseId, noticeType, {
+    noticeDate,
+    amountOwedCents,
+    additionalNotes,
+  });
+  if (!noticeData) {
+    redirect(
+      ownerDocumentsPath(`${tabQuery}&error=${encodeURIComponent("Could not load tenant details.")}`),
+    );
+  }
+
+  const pdf = await buildNoticePdf(noticeData);
+  const filename = noticeFilename(noticeData);
+  const storagePath = `${user.id}/${crypto.randomUUID()}-${filename.replace(/[^\w.\-]+/g, "_")}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(PROP_MAN_STORAGE_BUCKET)
+    .upload(storagePath, pdf, { contentType: "application/pdf", upsert: false });
+  if (uploadError) {
+    redirect(ownerDocumentsPath(`${tabQuery}&error=${encodeURIComponent(uploadError.message)}`));
+  }
+
+  const reg = await registerDocument({
+    propertyId: null,
+    leaseId,
+    category: "internal",
+    storagePath,
+    filename,
+    kind: "notice",
+    noticeType,
+    metadata: {
+      notice_date: noticeDate,
+      compliance_date: noticeData.complianceDate,
+      amount_owed_cents: noticeData.amountOwedCents,
+    },
+  });
+  if (reg.error) {
+    await supabase.storage.from(PROP_MAN_STORAGE_BUCKET).remove([storagePath]);
+    redirect(ownerDocumentsPath(`${tabQuery}&error=${encodeURIComponent(reg.error)}`));
+  }
+
+  redirect(ownerDocumentsPath(`${tabQuery}&success=notice-generated`));
 }
