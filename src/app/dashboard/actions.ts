@@ -1,5 +1,6 @@
 "use server";
 
+import { MFA_COOKIE } from "@/lib/auth/email-mfa";
 import { BRAND } from "@/lib/brand";
 import { formatUnitAddress, upsertTenantCrmContact } from "@/lib/crm";
 import { documentKindLabel, NOTICE_TYPES, type NoticeType } from "@/lib/documents";
@@ -27,6 +28,7 @@ import { PROP_MAN_STORAGE_BUCKET } from "@/lib/supabase/storage";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 function propertiesPath(query?: string) {
@@ -55,6 +57,8 @@ function ownerDocumentsPath(query?: string) {
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  const jar = await cookies();
+  jar.delete(MFA_COOKIE);
   redirect("/");
 }
 

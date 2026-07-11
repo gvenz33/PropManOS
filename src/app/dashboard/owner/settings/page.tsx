@@ -1,5 +1,6 @@
 import { ActionMessage } from "@/components/action-message";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { EmailMfaSettings } from "@/components/email-mfa-settings";
 import { BRAND } from "@/lib/brand";
 import {
   isResendConfigured,
@@ -13,9 +14,9 @@ import { sendTestEmail, updateOwnerEmailSettings } from "../../actions";
 export default async function OwnerSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; mfa?: string }>;
 }) {
-  const { success, error } = await searchParams;
+  const { success, error, mfa } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -25,7 +26,7 @@ export default async function OwnerSettingsPage({
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "full_name, email, email_sender_name, email_from_address, email_reply_to, email_signature",
+      "full_name, email, email_sender_name, email_from_address, email_reply_to, email_signature, email_mfa_enabled",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -43,7 +44,7 @@ export default async function OwnerSettingsPage({
         </p>
       </div>
 
-      <ActionMessage success={success} error={error} />
+      <ActionMessage success={success} error={mfa ? null : error} />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -177,6 +178,14 @@ export default async function OwnerSettingsPage({
           <ChangePasswordForm returnTo="/dashboard/owner/settings" />
         </div>
       </section>
+
+      <EmailMfaSettings
+        enabled={Boolean(profile?.email_mfa_enabled || user.app_metadata?.email_mfa)}
+        email={profile?.email ?? user.email ?? ""}
+        returnTo="/dashboard/owner/settings"
+        mode={mfa}
+        error={mfa ? error : null}
+      />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Send test email</h2>

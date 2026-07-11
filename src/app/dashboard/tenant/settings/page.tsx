@@ -1,6 +1,7 @@
 import { ActionMessage } from "@/components/action-message";
 import { BankConnectionCard } from "@/components/bank-connection-card";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { EmailMfaSettings } from "@/components/email-mfa-settings";
 import { getActiveBankConnection } from "@/lib/plaid/bank-connections";
 import { isPlaidConfigured } from "@/lib/plaid/client";
 import { platformFeeCents } from "@/lib/plaid/fees";
@@ -12,9 +13,9 @@ import { updateTenantNotifications } from "../../actions";
 export default async function TenantSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; mfa?: string }>;
 }) {
-  const { success, error } = await searchParams;
+  const { success, error, mfa } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,7 +24,7 @@ export default async function TenantSettingsPage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, phone, email, notify_email, notify_sms")
+    .select("full_name, phone, email, notify_email, notify_sms, email_mfa_enabled")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -41,7 +42,7 @@ export default async function TenantSettingsPage({
         </p>
       </div>
 
-      <ActionMessage success={success} error={error} />
+      <ActionMessage success={success} error={mfa ? null : error} />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Bank account</h2>
@@ -68,6 +69,14 @@ export default async function TenantSettingsPage({
           <ChangePasswordForm returnTo="/dashboard/tenant/settings" />
         </div>
       </section>
+
+      <EmailMfaSettings
+        enabled={Boolean(profile?.email_mfa_enabled || user.app_metadata?.email_mfa)}
+        email={profile?.email ?? user.email ?? ""}
+        returnTo="/dashboard/tenant/settings"
+        mode={mfa}
+        error={mfa ? error : null}
+      />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Notification preferences</h2>

@@ -18,12 +18,31 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     setLoading(true);
     setMessage(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
+      setLoading(false);
       setMessage(error.message);
       return;
     }
+
+    const mfaEnabledFromMeta = data.user?.app_metadata?.email_mfa === true;
+    let mfaEnabled = mfaEnabledFromMeta;
+    if (!mfaEnabled && data.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email_mfa_enabled")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      mfaEnabled = Boolean(profile?.email_mfa_enabled);
+    }
+    if (mfaEnabled) {
+      setLoading(false);
+      router.push(`/login/mfa?next=${encodeURIComponent(nextPath)}`);
+      router.refresh();
+      return;
+    }
+
+    setLoading(false);
     router.push(nextPath);
     router.refresh();
   }

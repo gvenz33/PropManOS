@@ -1,14 +1,15 @@
 import { ActionMessage } from "@/components/action-message";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { EmailMfaSettings } from "@/components/email-mfa-settings";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export default async function AdminSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; mfa?: string }>;
 }) {
-  const { success, error } = await searchParams;
+  const { success, error, mfa } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,7 +18,7 @@ export default async function AdminSettingsPage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, full_name, email")
+    .select("role, full_name, email, email_mfa_enabled")
     .eq("id", user.id)
     .maybeSingle();
   if (profile?.role !== "admin") redirect("/dashboard");
@@ -31,7 +32,7 @@ export default async function AdminSettingsPage({
         </p>
       </div>
 
-      <ActionMessage success={success} error={error} />
+      <ActionMessage success={success} error={mfa ? null : error} />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Signed in as</h2>
@@ -51,6 +52,14 @@ export default async function AdminSettingsPage({
           <ChangePasswordForm returnTo="/dashboard/admin/settings" />
         </div>
       </section>
+
+      <EmailMfaSettings
+        enabled={Boolean(profile.email_mfa_enabled || user.app_metadata?.email_mfa)}
+        email={profile.email ?? user.email ?? ""}
+        returnTo="/dashboard/admin/settings"
+        mode={mfa}
+        error={mfa ? error : null}
+      />
     </div>
   );
 }
