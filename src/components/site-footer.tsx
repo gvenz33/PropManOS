@@ -13,14 +13,18 @@ const footerLinks = {
     { href: "/sign-up?role=tenant", label: "Tenant sign up" },
     { href: "/contact", label: "Contact" },
   ],
+  Legal: [
+    { href: "/privacy", label: "Privacy Policy" },
+    { href: "/terms", label: "Terms of Use" },
+  ],
 };
 
 export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-[var(--border)] bg-[var(--brand-navy)] text-white">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-2">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="sm:col-span-2 lg:col-span-2">
             <BrandLogo href={undefined} variant="icon" iconBadge className="mb-4" />
             <p className="text-lg font-semibold">{BRAND.name}</p>
             <p className="mt-2 max-w-sm text-sm text-white/70">
@@ -49,7 +53,20 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-white/10 py-5 text-center text-xs text-white/50">
-        © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
+        <p>
+          © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
+        </p>
+        <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <Link href="/privacy" className="transition hover:text-white">
+            Privacy Policy
+          </Link>
+          <span aria-hidden className="text-white/30">
+            ·
+          </span>
+          <Link href="/terms" className="transition hover:text-white">
+            Terms of Use
+          </Link>
+        </p>
       </div>
     </footer>
   );
