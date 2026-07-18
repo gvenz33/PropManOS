@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 import { BRAND } from "@/lib/brand";
 import "./globals.css";
@@ -13,19 +13,48 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0f2942" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a1628" },
+  ],
+  colorScheme: "light dark",
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://gotmyrent.com",
+  ),
+  applicationName: BRAND.name,
   title: {
     default: `${BRAND.name} — ${BRAND.tagline}`,
     template: `%s | ${BRAND.name}`,
   },
   description: BRAND.description,
+  appleWebApp: {
+    capable: true,
+    title: BRAND.name,
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/got-my-rent-icon.png", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     shortcut: "/favicon.ico",
-    apple: "/got-my-rent-icon.png",
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
 };
 

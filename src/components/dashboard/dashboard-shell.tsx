@@ -23,11 +23,11 @@ export function DashboardShell({
   children,
 }: Props) {
   return (
-    <div className="min-h-full bg-[var(--background)]">
-      <header className="dashboard-header border-b border-[var(--border)]">
+    <div className="min-h-full min-h-dvh bg-[var(--background)]">
+      <header className="app-top-chrome dashboard-header sticky top-0 z-40 border-b border-[var(--border)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-4">
-            <BrandLogo href="/" variant="icon" className="shrink-0" />
+            <BrandLogo href="/dashboard" variant="icon" className="shrink-0" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-[var(--brand-blue)]">
                 {BRAND.name}
@@ -40,7 +40,7 @@ export function DashboardShell({
         </div>
         <DashboardNav links={links} />
       </header>
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
+      <div className="app-bottom-chrome mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
     </div>
   );
 }

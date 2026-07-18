@@ -33,8 +33,8 @@ export default async function AdminLayout({
   if (profile?.role !== "admin") redirect("/dashboard");
 
   return (
-    <div className="min-h-full bg-[var(--background)]">
-      <div className="border-b border-[var(--border)] bg-[var(--card)]">
+    <div className="min-h-full min-h-dvh bg-[var(--background)]">
+      <div className="app-top-chrome sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--card)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-4">
             <BrandLogo variant="icon" href="/dashboard/admin" />
@@ -57,19 +57,22 @@ export default async function AdminLayout({
             </button>
           </form>
         </div>
-        <nav className="mx-auto flex max-w-6xl flex-wrap gap-1 px-4 pb-3 sm:px-6">
+        <nav
+          className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden"
+          aria-label="Admin"
+        >
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--muted-bg)] hover:text-[var(--foreground)]"
+              className="shrink-0 touch-manipulation rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--muted-bg)] hover:text-[var(--foreground)]"
             >
               {l.label}
             </Link>
           ))}
         </nav>
       </div>
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
+      <div className="app-bottom-chrome mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
     </div>
   );
 }
