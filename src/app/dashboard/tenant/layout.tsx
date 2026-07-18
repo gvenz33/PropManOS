@@ -1,15 +1,19 @@
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import type { DashboardLink } from "@/components/dashboard/nav-types";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { signOutAction } from "../actions";
 
-const links = [
-  { href: "/dashboard/tenant", label: "Home" },
-  { href: "/dashboard/tenant/invoices", label: "Invoices" },
-  { href: "/dashboard/tenant/documents", label: "Documents" },
-  { href: "/dashboard/tenant/repairs", label: "Maintenance" },
-  { href: "/dashboard/tenant/settings", label: "Settings" },
-  { href: "/dashboard/tenant/faq", label: "Tenant FAQ" },
+const primaryLinks: DashboardLink[] = [
+  { href: "/dashboard/tenant", label: "Home", shortLabel: "Home", icon: "home" },
+  { href: "/dashboard/tenant/invoices", label: "Invoices", shortLabel: "Rent", icon: "rent" },
+  { href: "/dashboard/tenant/documents", label: "Documents", shortLabel: "Docs", icon: "documents" },
+  { href: "/dashboard/tenant/repairs", label: "Maintenance", shortLabel: "Fixes", icon: "repairs" },
+];
+
+const moreLinks: DashboardLink[] = [
+  { href: "/dashboard/tenant/settings", label: "Settings", icon: "settings" },
+  { href: "/dashboard/tenant/faq", label: "Tenant FAQ", icon: "faq" },
 ];
 
 export default async function TenantLayout({
@@ -36,7 +40,8 @@ export default async function TenantLayout({
     <DashboardShell
       portalLabel="Tenant portal"
       userName={profile?.full_name || user.email || "Account"}
-      links={links}
+      primaryLinks={primaryLinks}
+      moreLinks={moreLinks}
       signOut={
         <form action={signOutAction}>
           <button type="submit" className="dashboard-signout">

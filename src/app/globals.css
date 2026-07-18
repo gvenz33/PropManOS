@@ -208,6 +208,37 @@ body {
   font-weight: 600;
 }
 
+.dashboard-bottom-tab {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.45rem 0.25rem 0.55rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  border-radius: 0.75rem;
+  transition: color 0.15s, background 0.15s;
+}
+
+.dashboard-bottom-tab:hover {
+  color: var(--foreground);
+  background: var(--muted-bg);
+}
+
+.dashboard-bottom-tab-active {
+  color: var(--brand-blue);
+}
+
+.dashboard-bottom-tab-active:hover {
+  color: var(--brand-blue);
+  background: var(--brand-blue-dim);
+}
+
 .dashboard-page-header {
   margin-bottom: 0.5rem;
 }

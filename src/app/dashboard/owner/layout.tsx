@@ -1,19 +1,23 @@
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import type { DashboardLink } from "@/components/dashboard/nav-types";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { signOutAction } from "../actions";
 
-const links = [
-  { href: "/dashboard/owner", label: "Overview" },
-  { href: "/dashboard/owner/properties", label: "Properties" },
-  { href: "/dashboard/owner/invoices", label: "Rent & late fees" },
-  { href: "/dashboard/owner/payments", label: "Bank account" },
-  { href: "/dashboard/owner/documents", label: "Documents" },
-  { href: "/dashboard/owner/repairs", label: "Maintenance" },
-  { href: "/dashboard/owner/reports", label: "Owner reports" },
-  { href: "/dashboard/owner/crm", label: "CRM" },
-  { href: "/dashboard/owner/settings", label: "Settings" },
-  { href: "/dashboard/owner/faq", label: "Landlord FAQ" },
+const primaryLinks: DashboardLink[] = [
+  { href: "/dashboard/owner", label: "Overview", shortLabel: "Home", icon: "home" },
+  { href: "/dashboard/owner/properties", label: "Properties", shortLabel: "Units", icon: "properties" },
+  { href: "/dashboard/owner/invoices", label: "Rent & late fees", shortLabel: "Rent", icon: "rent" },
+  { href: "/dashboard/owner/documents", label: "Documents", shortLabel: "Docs", icon: "documents" },
+];
+
+const moreLinks: DashboardLink[] = [
+  { href: "/dashboard/owner/payments", label: "Bank account", icon: "bank" },
+  { href: "/dashboard/owner/repairs", label: "Maintenance", icon: "repairs" },
+  { href: "/dashboard/owner/reports", label: "Owner reports", icon: "reports" },
+  { href: "/dashboard/owner/crm", label: "CRM", icon: "crm" },
+  { href: "/dashboard/owner/settings", label: "Settings", icon: "settings" },
+  { href: "/dashboard/owner/faq", label: "Landlord FAQ", icon: "faq" },
 ];
 
 export default async function OwnerLayout({
@@ -40,7 +44,8 @@ export default async function OwnerLayout({
     <DashboardShell
       portalLabel="Landlord / PM workspace"
       userName={profile.full_name || user.email || "Account"}
-      links={links}
+      primaryLinks={primaryLinks}
+      moreLinks={moreLinks}
       signOut={
         <form action={signOutAction}>
           <button type="submit" className="dashboard-signout">

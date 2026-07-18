@@ -1,16 +1,17 @@
 import { BrandLogo } from "@/components/brand-logo";
-import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { DashboardBottomNav } from "@/components/dashboard/dashboard-bottom-nav";
 import { BRAND } from "@/lib/brand";
+import type { DashboardLink } from "./nav-types";
 
-export type DashboardLink = {
-  href: string;
-  label: string;
-};
+export type { DashboardLink } from "./nav-types";
 
 type Props = {
   portalLabel: string;
   userName: string;
-  links: DashboardLink[];
+  /** Primary destinations shown in the bottom tab bar */
+  primaryLinks: DashboardLink[];
+  /** Secondary destinations under the More sheet */
+  moreLinks?: DashboardLink[];
   signOut: React.ReactNode;
   children: React.ReactNode;
 };
@@ -18,29 +19,34 @@ type Props = {
 export function DashboardShell({
   portalLabel,
   userName,
-  links,
+  primaryLinks,
+  moreLinks = [],
   signOut,
   children,
 }: Props) {
   return (
     <div className="min-h-full min-h-dvh bg-[var(--background)]">
       <header className="app-top-chrome dashboard-header sticky top-0 z-40 border-b border-[var(--border)]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex items-center gap-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <BrandLogo href="/dashboard" variant="icon" className="shrink-0" />
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-widest text-[var(--brand-blue)]">
                 {BRAND.name}
               </p>
-              <p className="font-semibold text-[var(--foreground)]">{userName}</p>
-              <p className="text-xs text-[var(--muted)]">{portalLabel}</p>
+              <p className="truncate font-semibold text-[var(--foreground)]">{userName}</p>
+              <p className="truncate text-xs text-[var(--muted)]">{portalLabel}</p>
             </div>
           </div>
           {signOut}
         </div>
-        <DashboardNav links={links} />
       </header>
-      <div className="app-bottom-chrome mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
+
+      <div className="mx-auto max-w-6xl px-4 py-6 pb-28 sm:px-6 sm:py-8 sm:pb-32">
+        {children}
+      </div>
+
+      <DashboardBottomNav primary={primaryLinks} more={moreLinks} />
     </div>
   );
 }
