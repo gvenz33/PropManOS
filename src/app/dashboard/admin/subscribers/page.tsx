@@ -115,7 +115,7 @@ export default async function AdminSubscribersPage({
                     />
                   </td>
                   <td className="px-4 py-3 text-[var(--muted)]">
-                    {SUBSCRIPTION_PLANS[(subscriber.subscription_plan ?? "free") as SubscriptionPlan]
+                    {SUBSCRIPTION_PLANS[(subscriber.subscription_plan ?? "essential") as SubscriptionPlan]
                       ?.label ?? "Free"}
                   </td>
                   <td className="px-4 py-3 text-[var(--muted)]">

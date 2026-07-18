@@ -1,9 +1,7 @@
 import { BankConnectionCard } from "@/components/bank-connection-card";
 import { getActiveBankConnection } from "@/lib/plaid/bank-connections";
 import { isPlaidConfigured } from "@/lib/plaid/client";
-import { platformFeeCents } from "@/lib/plaid/fees";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney } from "@/lib/utils";
 import { redirect } from "next/navigation";
 
 export default async function OwnerPaymentsPage() {
@@ -15,16 +13,14 @@ export default async function OwnerPaymentsPage() {
 
   const connection = await getActiveBankConnection(user.id, "payout");
   const configured = isPlaidConfigured();
-  const fee = platformFeeCents();
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Bank account</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Connect the account where you receive rent. Tenants can pay by bank when both sides are
-          connected. ACH processing fees ({formatMoney(fee)} per payment) are charged to the tenant,
-          not deducted from your payout.
+          Connect the account where you receive rent. ACH via Plaid is free for landlords and
+          tenants. Card payments add a 4% fee paid by the tenant.
         </p>
       </div>
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { MFA_COOKIE } from "@/lib/auth/email-mfa";
+import { assertCanAddUnit } from "@/lib/billing/access";
 import { BRAND } from "@/lib/brand";
 import { formatUnitAddress, upsertTenantCrmContact } from "@/lib/crm";
 import { documentKindLabel, NOTICE_TYPES, type NoticeType } from "@/lib/documents";
@@ -130,6 +131,11 @@ export async function updateProperty(formData: FormData): Promise<void> {
 
 export async function createUnit(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   const propertyId = String(formData.get("property_id") ?? "");
   const label = String(formData.get("label") ?? "").trim();
   const rent = parseDollarsToCents(formData.get("rent_amount_dollars"));
@@ -142,6 +148,11 @@ export async function createUnit(formData: FormData): Promise<void> {
   }
   if (rent === null || rent <= 0) {
     redirect(propertyPath(propertyId, `error=${encodeURIComponent("Enter a valid monthly rent.")}`));
+  }
+
+  const unitGate = await assertCanAddUnit(user.id);
+  if (!unitGate.ok) {
+    redirect(propertyPath(propertyId, `error=${encodeURIComponent(unitGate.error)}`));
   }
 
   const { error } = await supabase.from("units").insert({

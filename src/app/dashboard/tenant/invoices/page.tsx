@@ -1,8 +1,9 @@
 import { PaymentInstructions } from "@/components/payment-instructions";
 import { PayInvoiceButton } from "@/components/pay-invoice-button";
+import { isStripeConfigured, STRIPE_CARD_FEE_PERCENT } from "@/lib/billing/stripe";
 import { getActiveBankConnection } from "@/lib/plaid/bank-connections";
 import { isPlaidConfigured } from "@/lib/plaid/client";
-import { invoiceTotals, platformFeeCents } from "@/lib/plaid/fees";
+import { invoiceTotals } from "@/lib/plaid/fees";
 import { computeInvoice, statusLabel } from "@/lib/invoices/compute";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -17,6 +18,7 @@ export default async function TenantInvoicesPage() {
   if (!user) redirect("/login");
 
   const plaidEnabled = isPlaidConfigured();
+  const stripeEnabled = isStripeConfigured();
   const tenantBank = plaidEnabled
     ? await getActiveBankConnection(user.id, "payment")
     : null;
@@ -67,14 +69,14 @@ export default async function TenantInvoicesPage() {
           .order("due_date", { ascending: false })
       : { data: [] as never[] };
 
-  const feeCents = platformFeeCents();
+  const feeCents = 0;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
         <p className="mt-1 text-[var(--muted)]">
-          Pay open invoices from your connected bank or use Zelle / Cash App if your landlord added
+          Pay by free bank ACH, card (4% tenant fee), or Zelle / Cash App when your landlord added
           those details.
         </p>
       </div>
@@ -92,7 +94,8 @@ export default async function TenantInvoicesPage() {
           const unit = Array.isArray(raw) ? raw[0] ?? null : raw;
           const pRaw = unit?.properties;
           const property = Array.isArray(pRaw) ? pRaw[0] ?? null : pRaw ?? null;
-          const totals = invoiceTotals(inv);
+          const totalsAch = invoiceTotals(inv, "ach");
+          const totalsCard = invoiceTotals(inv, "card");
           const money = computeInvoice(inv);
           const periodLabel = `${inv.period_year}-${String(inv.period_month).padStart(2, "0")}`;
           const ownerReady = property?.owner_id
@@ -103,9 +106,10 @@ export default async function TenantInvoicesPage() {
             inv.status !== "paid" &&
             Boolean(tenantBank) &&
             ownerReady;
+          const canPayByCard = stripeEnabled && inv.status !== "paid";
           const payDisabledReason =
             inv.status !== "paid" && plaidEnabled && !tenantBank
-              ? "Connect your bank in Settings to pay by ACH."
+              ? "Connect your bank in Settings to pay by ACH (free)."
               : inv.status !== "paid" && plaidEnabled && tenantBank && !ownerReady
                 ? "Your landlord has not connected a bank account for ACH yet."
                 : null;
@@ -128,9 +132,9 @@ export default async function TenantInvoicesPage() {
                   </span>
                 ) : null}
               </p>
-              {totals.lateFeeCents > 0 ? (
+              {totalsAch.lateFeeCents > 0 ? (
                 <p className="text-xs text-[var(--muted)]">
-                  Includes late fee {formatMoney(totals.lateFeeCents)}
+                  Includes late fee {formatMoney(totalsAch.lateFeeCents)}
                 </p>
               ) : null}
               {money.paidCents > 0 && money.balanceCents > 0 ? (
@@ -149,9 +153,13 @@ export default async function TenantInvoicesPage() {
               {inv.status !== "paid" ? (
                 <PayInvoiceButton
                   invoiceId={inv.id}
-                  totalCents={totals.totalDebitCents}
-                  platformFeeCents={feeCents}
-                  canPay={Boolean(canPayByBank)}
+                  achTotalCents={totalsAch.totalDebitCents}
+                  cardTotalCents={totalsCard.totalDebitCents}
+                  achFeeCents={feeCents}
+                  cardFeeCents={totalsCard.platformFeeCents}
+                  cardFeePercent={STRIPE_CARD_FEE_PERCENT}
+                  canPayAch={Boolean(canPayByBank)}
+                  canPayCard={Boolean(canPayByCard)}
                   disabledReason={payDisabledReason}
                 />
               ) : null}
@@ -160,7 +168,7 @@ export default async function TenantInvoicesPage() {
                   <PaymentInstructions
                     unit={{ ...unit, label: unit.label }}
                     propertyName={property?.name}
-                    amountLabel={formatMoney(totals.rentAmountCents + totals.lateFeeCents)}
+                    amountLabel={formatMoney(totalsAch.rentAmountCents + totalsAch.lateFeeCents)}
                     periodLabel={periodLabel}
                     compact
                   />

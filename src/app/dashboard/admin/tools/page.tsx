@@ -1,4 +1,5 @@
 import { BRAND } from "@/lib/brand";
+import { isStripeConfigured } from "@/lib/billing/stripe";
 import { isResendConfigured, parseDefaultFromEmail } from "@/lib/notifications/email-config";
 import { isPlaidConfigured } from "@/lib/plaid/client";
 import { getSiteUrl } from "@/lib/site-url";
@@ -23,6 +24,7 @@ export default async function AdminToolsPage() {
   const emailConfigured = isResendConfigured();
   const fromEmail = parseDefaultFromEmail();
   const plaidConfigured = isPlaidConfigured();
+  const stripeConfigured = isStripeConfigured();
   const siteUrl = getSiteUrl();
 
   const statusItems = [
@@ -42,6 +44,11 @@ export default async function AdminToolsPage() {
       detail: plaidConfigured
         ? `Configured (${process.env.PLAID_ENV ?? "sandbox"})`
         : "Not configured",
+    },
+    {
+      label: "Subscriptions & cards (Stripe)",
+      ok: stripeConfigured,
+      detail: stripeConfigured ? "Configured" : "Missing STRIPE_SECRET_KEY",
     },
     {
       label: "Supabase auth",

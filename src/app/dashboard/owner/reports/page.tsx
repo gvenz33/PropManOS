@@ -1,5 +1,6 @@
 import { DashboardPageHeader } from "@/components/dashboard/page-header";
 import { MonthlyReportPanel } from "@/components/dashboard/monthly-report-panel";
+import { getOwnerBillingProfile, ownerHasFeature } from "@/lib/billing/access";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -10,6 +11,10 @@ export default async function OwnerReportsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const profile = await getOwnerBillingProfile(user.id);
+  if (!profile || !ownerHasFeature(profile, "owner_reports")) {
+    redirect("/dashboard/owner/billing");
+  }
   const now = new Date();
   const defaultYear = now.getFullYear();
   const defaultMonth = now.getMonth() + 1;

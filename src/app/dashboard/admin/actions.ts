@@ -70,7 +70,7 @@ export async function createSubscriber(formData: FormData): Promise<void> {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const role = String(formData.get("role") ?? "tenant") as UserRole;
   const phone = String(formData.get("phone") ?? "").trim();
-  const plan = String(formData.get("subscription_plan") ?? "free");
+  const plan = String(formData.get("subscription_plan") ?? "essential");
   const password = String(formData.get("password") ?? "");
   const sendInvite = formData.get("send_invite") === "on";
 
@@ -129,6 +129,8 @@ export async function createSubscriber(formData: FormData): Promise<void> {
       phone: phone || null,
       email,
       subscription_plan: plan,
+      subscription_status: "active",
+      billing_exempt: true,
     })
     .eq("id", data.user.id);
 
@@ -204,7 +206,11 @@ export async function updateSubscriberPlan(formData: FormData): Promise<void> {
   const { supabase } = await requireAdmin();
   const { error } = await supabase
     .from("profiles")
-    .update({ subscription_plan: plan })
+    .update({
+      subscription_plan: plan,
+      subscription_status: "active",
+      billing_exempt: true,
+    })
     .eq("id", profileId);
 
   if (error) {
@@ -219,7 +225,7 @@ export async function updateSubscriberFeatures(formData: FormData): Promise<void
   const profileId = String(formData.get("profile_id") ?? "");
   if (!profileId) redirect("/dashboard/admin/subscribers");
 
-  const plan = String(formData.get("subscription_plan") ?? "free");
+  const plan = String(formData.get("subscription_plan") ?? "essential");
   if (!profileId || !isSubscriptionPlan(plan)) {
     redirect("/dashboard/admin/subscribers");
   }

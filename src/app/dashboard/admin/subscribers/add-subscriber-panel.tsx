@@ -115,7 +115,7 @@ export function AddSubscriberPanel() {
                 <select
                   id="add_plan"
                   name="subscription_plan"
-                  defaultValue="free"
+                  defaultValue="essential"
                   className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                 >
                   {(Object.keys(SUBSCRIPTION_PLANS) as SubscriptionPlan[]).map((key) => (

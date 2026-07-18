@@ -8,6 +8,11 @@ export function getSiteUrl() {
   return url.replace(/\/$/, "");
 }
 
+export function absoluteUrl(path: string) {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${getSiteUrl()}${normalized}`;
+}
+
 export function authCallbackUrl(nextPath: string) {
   const next = nextPath.startsWith("/") ? nextPath : `/${nextPath}`;
   return `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`;

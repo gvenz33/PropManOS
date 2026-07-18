@@ -4,9 +4,7 @@ import { ChangePasswordForm } from "@/components/change-password-form";
 import { EmailMfaSettings } from "@/components/email-mfa-settings";
 import { getActiveBankConnection } from "@/lib/plaid/bank-connections";
 import { isPlaidConfigured } from "@/lib/plaid/client";
-import { platformFeeCents } from "@/lib/plaid/fees";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import { updateTenantNotifications } from "../../actions";
 
@@ -47,9 +45,8 @@ export default async function TenantSettingsPage({
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Bank account</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Connect a checking account to pay rent by ACH. A {formatMoney(platformFeeCents())}{" "}
-          processing fee is added to each bank payment and paid by you — not deducted from your
-          landlord&apos;s payout.
+          Connect a checking account to pay rent by ACH at no fee. Card payments add a 4% fee paid
+          by you.
         </p>
         <div className="mt-4">
           <BankConnectionCard

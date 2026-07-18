@@ -3,9 +3,9 @@ import { ROLE_LABELS, type UserRole } from "@/lib/brand";
 import {
   effectiveFeatures,
   MANAGEABLE_FEATURES,
+  normalizeSubscriptionPlan,
   parseFeatureFlags,
   SUBSCRIPTION_PLANS,
-  type SubscriptionPlan,
 } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -46,7 +46,7 @@ export default async function AdminSubscriberPage({
 
   if (!subscriber) notFound();
 
-  const plan = (subscriber.subscription_plan ?? "free") as SubscriptionPlan;
+  const plan = normalizeSubscriptionPlan(subscriber.subscription_plan);
   const overrides = parseFeatureFlags(subscriber.feature_flags);
   const features = effectiveFeatures(plan, overrides);
 

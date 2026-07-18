@@ -78,6 +78,31 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Landlords without an active subscription can only access billing.
+  if (
+    user &&
+    path.startsWith("/dashboard/owner") &&
+    !path.startsWith("/dashboard/owner/billing")
+  ) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, subscription_status, billing_exempt")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.role === "owner") {
+      const exempt = Boolean(profile.billing_exempt);
+      const status = profile.subscription_status ?? "inactive";
+      const active = exempt || status === "active" || status === "trialing";
+      if (!active) {
+        const u = request.nextUrl.clone();
+        u.pathname = "/dashboard/owner/billing";
+        u.search = "";
+        return NextResponse.redirect(u);
+      }
+    }
+  }
+
   return supabaseResponse;
 }
 

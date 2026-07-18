@@ -38,6 +38,8 @@ const successCopy: Record<string, string> = {
   "resource-removed": "Document removed from your library.",
   "mfa-enabled": "Email multi-factor authentication is on.",
   "mfa-disabled": "Email multi-factor authentication is off.",
+  subscribed: "Subscription activated. Welcome aboard.",
+  "card-paid": "Card payment received. Thank you.",
   sent: "If an account exists for that email, we sent a password reset link.",
   submitted: "Maintenance request submitted.",
   waived: "Late fee waived.",

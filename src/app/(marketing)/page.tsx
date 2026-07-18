@@ -77,7 +77,7 @@ export default async function HomePage({
           {[
             { value: "Minutes", label: "to set up your first property" },
             { value: "One portal", label: "for landlords and tenants" },
-            { value: "No minimums", label: "unlike $100+/mo enterprise plans" },
+            { value: "From $49/mo", label: "Essential plan · up to 8 units" },
           ].map((stat) => (
             <div key={stat.label} className="marketing-stat-pill rounded-2xl p-5 text-center">
               <p className="text-2xl font-bold text-[var(--brand-blue)]">{stat.value}</p>
@@ -224,8 +224,8 @@ export default async function HomePage({
           </p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight">Simple, transparent pricing</h2>
           <p className="mt-4 text-[var(--muted)]">
-            No per-unit minimums during early access. We&apos;re focused on indie landlords
-            and property managers.
+            Two paid plans — Essential and Pro. ACH bank payments are free; card payments add a 4%
+            fee paid by the tenant. Need more than 50 units? Contact us for custom pricing.
           </p>
         </div>
         <div className="mt-12 grid gap-6 lg:grid-cols-2">

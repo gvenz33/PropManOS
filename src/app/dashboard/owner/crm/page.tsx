@@ -1,3 +1,4 @@
+import { getOwnerBillingProfile, ownerHasFeature } from "@/lib/billing/access";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createCrmActivity, createCrmContact } from "../../actions";
@@ -9,6 +10,10 @@ export default async function OwnerCrmPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const profile = await getOwnerBillingProfile(user.id);
+  if (!profile || !ownerHasFeature(profile, "crm")) {
+    redirect("/dashboard/owner/billing");
+  }
   const { data: contacts } = await supabase
     .from("crm_contacts")
     .select("*")

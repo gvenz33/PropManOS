@@ -1,5 +1,5 @@
 import { ROLE_LABELS } from "@/lib/brand";
-import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/plans";
+import { SUBSCRIPTION_PLANS, normalizeSubscriptionPlan, type SubscriptionPlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -41,7 +41,7 @@ export async function GET() {
       profile.email ?? "",
       profile.phone ?? "",
       ROLE_LABELS[profile.role as keyof typeof ROLE_LABELS] ?? profile.role,
-      SUBSCRIPTION_PLANS[(profile.subscription_plan ?? "free") as SubscriptionPlan]?.label ??
+      SUBSCRIPTION_PLANS[normalizeSubscriptionPlan(profile.subscription_plan)]?.label ??
         profile.subscription_plan,
       profile.created_at,
     ]

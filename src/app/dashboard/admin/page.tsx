@@ -1,5 +1,5 @@
 import { ROLE_LABELS } from "@/lib/brand";
-import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/plans";
+import { normalizeSubscriptionPlan, SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { AddSubscriberPanel } from "./subscribers/add-subscriber-panel";
@@ -21,7 +21,7 @@ export default async function AdminOverviewPage() {
   const planCounts = (Object.keys(SUBSCRIPTION_PLANS) as SubscriptionPlan[]).map((plan) => ({
     plan,
     label: SUBSCRIPTION_PLANS[plan].label,
-    count: profiles?.filter((p) => (p.subscription_plan ?? "free") === plan).length ?? 0,
+    count: profiles?.filter((p) => normalizeSubscriptionPlan(p.subscription_plan) === plan).length ?? 0,
   }));
 
   const recent = profiles?.slice(0, 6) ?? [];
