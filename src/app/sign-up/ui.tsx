@@ -1,44 +1,18 @@
 "use client";
 
 import { PasswordInput } from "@/components/password-input";
-import { createClient } from "@/lib/supabase/client";
-import { authCallbackUrl } from "@/lib/site-url";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import Link from "next/link";
+import { useActionState, useState } from "react";
+import { signUpAction, type SignUpState } from "./actions";
+
+const initialState: SignUpState | null = null;
 
 export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" }) {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"owner" | "tenant">(defaultRole);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: authCallbackUrl("/dashboard"),
-        data: { full_name: fullName, role },
-      },
-    });
-    setLoading(false);
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-    setMessage("Check your email to confirm your account, then sign in.");
-    router.refresh();
-  }
+  const [state, formAction, pending] = useActionState(signUpAction, initialState);
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form action={formAction} className="space-y-4">
       <div>
         <span className="block text-sm font-medium">I am a</span>
         <div className="mt-2 flex gap-3">
@@ -46,6 +20,7 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
             <input
               type="radio"
               name="role"
+              value="owner"
               checked={role === "owner"}
               onChange={() => setRole("owner")}
             />
@@ -55,6 +30,7 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
             <input
               type="radio"
               name="role"
+              value="tenant"
               checked={role === "tenant"}
               onChange={() => setRole("tenant")}
             />
@@ -68,9 +44,8 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
         </label>
         <input
           id="fullName"
+          name="fullName"
           required
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
           className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none ring-[var(--accent)] focus:ring-2"
         />
       </div>
@@ -80,11 +55,10 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
         </label>
         <input
           id="email"
+          name="email"
           type="email"
           autoComplete="email"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
           className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none ring-[var(--accent)] focus:ring-2"
         />
       </div>
@@ -95,20 +69,29 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
         autoComplete="new-password"
         required
         minLength={8}
-        value={password}
-        onChange={setPassword}
       />
-      {message ? (
-        <p className="text-sm text-[var(--muted)]" role="status">
-          {message}
+      {state?.message ? (
+        <p
+          className={`text-sm ${state.ok ? "text-[var(--muted)]" : "text-red-600"}`}
+          role="status"
+        >
+          {state.message}
+          {state.ok ? (
+            <>
+              {" "}
+              <Link href="/login" className="font-medium text-[var(--accent)] hover:underline">
+                Sign in
+              </Link>
+            </>
+          ) : null}
         </p>
       ) : null}
       <button
         type="submit"
-        disabled={loading}
+        disabled={pending}
         className="w-full rounded-lg bg-[var(--accent)] py-2.5 text-sm font-semibold text-white disabled:opacity-60"
       >
-        {loading ? "Creating…" : "Create account"}
+        {pending ? "Creating…" : "Create account"}
       </button>
     </form>
   );
