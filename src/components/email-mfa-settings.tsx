@@ -34,7 +34,7 @@ export function EmailMfaSettings({
           <p className="mt-1 text-sm text-[var(--muted)]">
             When enabled, signing in with your password also requires a one-time code sent to{" "}
             <span className="font-medium text-[var(--foreground)]">{email}</span>.
-            {mandatory ? " This is required for landlord and admin accounts." : null}
+            {mandatory ? " This is required for all accounts." : null}
           </p>
         </div>
         <span

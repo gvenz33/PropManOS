@@ -73,6 +73,7 @@ export default async function TenantSettingsPage({
         returnTo="/dashboard/tenant/settings"
         mode={mfa}
         error={mfa ? error : null}
+        mandatory
       />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">

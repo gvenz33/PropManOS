@@ -171,7 +171,7 @@ export async function confirmDisableEmailMfa(formData: FormData): Promise<void> 
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profile?.role === "owner" || profile?.role === "admin") {
+  if (profile?.role === "owner" || profile?.role === "admin" || profile?.role === "tenant") {
     redirect(
       `${returnTo}?error=${encodeURIComponent("Two-factor authentication is required for this account.")}`,
     );

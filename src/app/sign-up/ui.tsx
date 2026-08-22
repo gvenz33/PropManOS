@@ -37,10 +37,9 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
           </label>
         </div>
       </div>
-      {role === "owner" ? (
+      {role === "owner" || role === "tenant" ? (
         <p className="rounded-lg border border-[var(--border)] bg-[var(--muted-bg)] px-3 py-2 text-xs text-[var(--muted)]">
-          Landlord accounts require email verification and use a sign-in code for two-factor
-          authentication.
+          Accounts require email verification and a sign-in code for two-factor authentication.
         </p>
       ) : null}
       <div>

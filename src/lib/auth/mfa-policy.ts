@@ -1,7 +1,8 @@
 export type AccountRole = "owner" | "tenant" | "admin";
 
+/** Email MFA is required for every signed-in account role. */
 export function roleRequiresEmailMfa(role: AccountRole | string | null | undefined) {
-  return role === "owner" || role === "admin";
+  return role === "owner" || role === "tenant" || role === "admin";
 }
 
 export function profileRequiresEmailMfa(profile: {
