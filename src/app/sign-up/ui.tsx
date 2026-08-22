@@ -1,7 +1,6 @@
 "use client";
 
 import { PasswordInput } from "@/components/password-input";
-import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signUpAction, type SignUpState } from "./actions";
 
@@ -38,6 +37,12 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
           </label>
         </div>
       </div>
+      {role === "owner" ? (
+        <p className="rounded-lg border border-[var(--border)] bg-[var(--muted-bg)] px-3 py-2 text-xs text-[var(--muted)]">
+          Landlord accounts require email verification and use a sign-in code for two-factor
+          authentication.
+        </p>
+      ) : null}
       <div>
         <label htmlFor="fullName" className="block text-sm font-medium">
           Full name
@@ -76,14 +81,6 @@ export function SignUpForm({ defaultRole }: { defaultRole: "owner" | "tenant" })
           role="status"
         >
           {state.message}
-          {state.ok ? (
-            <>
-              {" "}
-              <Link href="/login" className="font-medium text-[var(--accent)] hover:underline">
-                Sign in
-              </Link>
-            </>
-          ) : null}
         </p>
       ) : null}
       <button

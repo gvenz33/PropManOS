@@ -40,6 +40,9 @@ export function getAuthSessionId(accessToken: string | null | undefined): string
   }
 }
 
+export type { AccountRole } from "@/lib/auth/mfa-policy";
+export { profileRequiresEmailMfa, roleRequiresEmailMfa } from "@/lib/auth/mfa-policy";
+
 export function isEmailMfaEnabled(user: User | null | undefined) {
   if (!user) return false;
   if (user.app_metadata?.email_mfa === true) return true;

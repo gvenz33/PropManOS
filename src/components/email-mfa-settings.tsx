@@ -14,12 +14,14 @@ export function EmailMfaSettings({
   returnTo,
   mode,
   error,
+  mandatory = false,
 }: {
   enabled: boolean;
   email: string;
   returnTo: string;
   mode?: string | null;
   error?: string | null;
+  mandatory?: boolean;
 }) {
   const confirmingEnable = mode === "enable";
   const confirmingDisable = mode === "disable";
@@ -32,6 +34,7 @@ export function EmailMfaSettings({
           <p className="mt-1 text-sm text-[var(--muted)]">
             When enabled, signing in with your password also requires a one-time code sent to{" "}
             <span className="font-medium text-[var(--foreground)]">{email}</span>.
+            {mandatory ? " This is required for landlord and admin accounts." : null}
           </p>
         </div>
         <span
@@ -116,15 +119,21 @@ export function EmailMfaSettings({
           </div>
         </form>
       ) : enabled ? (
-        <form action={startDisableEmailMfa} className="mt-4">
-          <input type="hidden" name="return_to" value={returnTo} />
-          <button
-            type="submit"
-            className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold"
-          >
-            Turn off email MFA
-          </button>
-        </form>
+        mandatory ? (
+          <p className="mt-4 text-sm text-[var(--muted)]">
+            Two-factor authentication is required for your account and cannot be turned off.
+          </p>
+        ) : (
+          <form action={startDisableEmailMfa} className="mt-4">
+            <input type="hidden" name="return_to" value={returnTo} />
+            <button
+              type="submit"
+              className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold"
+            >
+              Turn off email MFA
+            </button>
+          </form>
+        )
       ) : (
         <form action={startEnableEmailMfa} className="mt-4">
           <input type="hidden" name="return_to" value={returnTo} />

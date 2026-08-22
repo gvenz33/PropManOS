@@ -164,6 +164,19 @@ export async function confirmDisableEmailMfa(formData: FormData): Promise<void> 
   const code = String(formData.get("code") ?? "").trim();
   const { user } = await requireUser();
 
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.role === "owner" || profile?.role === "admin") {
+    redirect(
+      `${returnTo}?error=${encodeURIComponent("Two-factor authentication is required for this account.")}`,
+    );
+  }
+
   const verified = await consumeMfaChallenge({
     userId: user.id,
     code,
@@ -182,7 +195,6 @@ export async function confirmDisableEmailMfa(formData: FormData): Promise<void> 
   const jar = await cookies();
   jar.delete(MFA_COOKIE);
 
-  const supabase = await createClient();
   await supabase.auth.refreshSession();
 
   revalidatePath(returnTo);

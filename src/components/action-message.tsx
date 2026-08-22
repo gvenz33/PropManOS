@@ -36,6 +36,7 @@ const successCopy: Record<string, string> = {
   "resource-added": "Document added to your library.",
   "resources-added": "Documents added to your library.",
   "resource-removed": "Document removed from your library.",
+  "email-confirmed": "Email confirmed. Sign in to continue.",
   "mfa-enabled": "Email multi-factor authentication is on.",
   "mfa-disabled": "Email multi-factor authentication is off.",
   subscribed: "Subscription activated. Welcome aboard.",

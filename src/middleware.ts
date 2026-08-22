@@ -5,6 +5,7 @@ import {
   MFA_COOKIE,
   verifyMfaCookieValue,
 } from "@/lib/auth/email-mfa";
+import { profileRequiresEmailMfa } from "@/lib/auth/mfa-policy";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function middleware(request: NextRequest) {
@@ -61,44 +62,43 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(u);
   }
 
-  if (user && path.startsWith("/dashboard") && isEmailMfaEnabled(user)) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const sessionId = getAuthSessionId(session?.access_token);
-    const cookieOk =
-      sessionId &&
-      verifyMfaCookieValue(request.cookies.get(MFA_COOKIE)?.value, user.id, sessionId);
-
-    if (!cookieOk) {
-      const u = request.nextUrl.clone();
-      u.pathname = "/login/mfa";
-      u.searchParams.set("next", path);
-      return NextResponse.redirect(u);
-    }
-  }
-
-  // Landlords without an active subscription can only access billing.
-  if (
-    user &&
-    path.startsWith("/dashboard/owner") &&
-    !path.startsWith("/dashboard/owner/billing")
-  ) {
+  if (user && path.startsWith("/dashboard")) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, subscription_status, billing_exempt")
+      .select("role, email_mfa_enabled, subscription_status, billing_exempt")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profile?.role === "owner") {
-      const exempt = Boolean(profile.billing_exempt);
-      const status = profile.subscription_status ?? "inactive";
-      const active = exempt || status === "active" || status === "trialing";
-      if (!active) {
+    const mfaRequired = isEmailMfaEnabled(user) || profileRequiresEmailMfa(profile);
+    if (mfaRequired) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const sessionId = getAuthSessionId(session?.access_token);
+      const cookieOk =
+        sessionId &&
+        verifyMfaCookieValue(request.cookies.get(MFA_COOKIE)?.value, user.id, sessionId);
+
+      if (!cookieOk) {
         const u = request.nextUrl.clone();
-        u.pathname = "/dashboard/owner/billing";
-        u.search = "";
+        u.pathname = "/login/mfa";
+        u.searchParams.set("next", path);
         return NextResponse.redirect(u);
+      }
+    }
+
+    // Landlords without an active subscription can only access billing.
+    if (path.startsWith("/dashboard/owner") && !path.startsWith("/dashboard/owner/billing")) {
+      if (profile?.role === "owner") {
+        const exempt = Boolean(profile.billing_exempt);
+        const status = profile.subscription_status ?? "inactive";
+        const active = exempt || status === "active" || status === "trialing";
+        if (!active) {
+          const u = request.nextUrl.clone();
+          u.pathname = "/dashboard/owner/billing";
+          u.search = "";
+          return NextResponse.redirect(u);
+        }
       }
     }
   }

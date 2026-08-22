@@ -59,6 +59,7 @@ export default async function AdminSettingsPage({
         returnTo="/dashboard/admin/settings"
         mode={mfa}
         error={mfa ? error : null}
+        mandatory
       />
     </div>
   );

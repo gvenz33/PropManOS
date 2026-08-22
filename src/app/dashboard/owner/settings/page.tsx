@@ -185,6 +185,7 @@ export default async function OwnerSettingsPage({
         returnTo="/dashboard/owner/settings"
         mode={mfa}
         error={mfa ? error : null}
+        mandatory
       />
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">

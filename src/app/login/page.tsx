@@ -1,8 +1,9 @@
+import { ActionMessage } from "@/components/action-message";
 import { BrandLogo } from "@/components/brand-logo";
 import Link from "next/link";
 import { LoginForm } from "./ui";
 
-type Props = { searchParams: Promise<{ next?: string; error?: string; missing?: string }> };
+type Props = { searchParams: Promise<{ next?: string; error?: string; missing?: string; success?: string }> };
 
 export default async function LoginPage({ searchParams }: Props) {
   const sp = await searchParams;
@@ -26,7 +27,10 @@ export default async function LoginPage({ searchParams }: Props) {
         <BrandLogo variant="full" href="/" priority />
       </div>
       <h1 className="mt-4 text-center text-2xl font-bold">Sign in</h1>
-      {sp.error ? (
+      <div className="mt-4">
+        <ActionMessage success={sp.success} error={sp.error && sp.error !== "auth" ? sp.error : null} />
+      </div>
+      {sp.error === "auth" ? (
         <p className="mt-2 text-center text-sm text-[var(--danger)]">
           Something went wrong. Try again or{" "}
           <Link href="/forgot-password" className="font-medium underline">

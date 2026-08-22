@@ -28,3 +28,17 @@ export function resetPasswordUrl(tokenHash: string) {
   });
   return `${getSiteUrl()}/reset-password?${params.toString()}`;
 }
+
+export function confirmEmailUrl(
+  tokenHash: string,
+  nextPath = "/dashboard",
+  type: "signup" | "email" = "signup",
+) {
+  const next = nextPath.startsWith("/") ? nextPath : `/${nextPath}`;
+  const params = new URLSearchParams({
+    token_hash: tokenHash,
+    type,
+    next,
+  });
+  return `${getSiteUrl()}/auth/confirm?${params.toString()}`;
+}

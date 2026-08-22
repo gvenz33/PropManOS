@@ -1,6 +1,6 @@
 "use server";
 
-import { createAccountAndNotify } from "@/lib/auth/signup-confirmation-email";
+import { sendSignupConfirmationEmail } from "@/lib/auth/signup-confirmation-email";
 
 export type SignUpState = {
   ok: boolean;
@@ -27,7 +27,7 @@ export async function signUpAction(
     return { ok: false, message: "Password must be at least 8 characters." };
   }
 
-  const result = await createAccountAndNotify({
+  const result = await sendSignupConfirmationEmail({
     email,
     password,
     fullName,
