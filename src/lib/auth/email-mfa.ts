@@ -1,12 +1,19 @@
-import { createHash, createHmac, randomInt, timingSafeEqual } from "crypto";
+import { createHash, randomInt } from "crypto";
 import { BRAND } from "@/lib/brand";
 import { sendEmail } from "@/lib/notifications/outbound";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { User } from "@supabase/supabase-js";
 
-export const MFA_COOKIE = "gmr_mfa_v";
+export {
+  MFA_COOKIE,
+  createMfaCookieValue,
+  getAuthSessionId,
+  isEmailMfaEnabled,
+  verifyMfaCookieValue,
+} from "@/lib/auth/mfa-cookie";
+export type { AccountRole } from "@/lib/auth/mfa-policy";
+export { profileRequiresEmailMfa, roleRequiresEmailMfa } from "@/lib/auth/mfa-policy";
+
 const CODE_TTL_MS = 10 * 60 * 1000;
-const COOKIE_TTL_SECONDS = 60 * 60 * 24 * 14; // match long-lived sessions
 const MAX_ACTIVE_CHALLENGES = 5;
 
 export type MfaPurpose = "login" | "enable" | "disable";
@@ -26,60 +33,6 @@ export function hashMfaCode(code: string) {
 
 export function generateMfaCode() {
   return String(randomInt(0, 1_000_000)).padStart(6, "0");
-}
-
-export function getAuthSessionId(accessToken: string | null | undefined): string | null {
-  if (!accessToken) return null;
-  try {
-    const payload = JSON.parse(
-      Buffer.from(accessToken.split(".")[1] ?? "", "base64url").toString("utf8"),
-    ) as { session_id?: string; sessionId?: string };
-    return payload.session_id ?? payload.sessionId ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export type { AccountRole } from "@/lib/auth/mfa-policy";
-export { profileRequiresEmailMfa, roleRequiresEmailMfa } from "@/lib/auth/mfa-policy";
-
-export function isEmailMfaEnabled(user: User | null | undefined) {
-  if (!user) return false;
-  if (user.app_metadata?.email_mfa === true) return true;
-  return false;
-}
-
-function signCookiePayload(userId: string, sessionId: string, exp: number) {
-  const body = `${userId}.${sessionId}.${exp}`;
-  const sig = createHmac("sha256", pepper()).update(body).digest("base64url");
-  return `${body}.${sig}`;
-}
-
-export function createMfaCookieValue(userId: string, sessionId: string) {
-  const exp = Math.floor(Date.now() / 1000) + COOKIE_TTL_SECONDS;
-  return { value: signCookiePayload(userId, sessionId, exp), maxAge: COOKIE_TTL_SECONDS };
-}
-
-export function verifyMfaCookieValue(
-  cookieValue: string | undefined,
-  userId: string,
-  sessionId: string,
-) {
-  if (!cookieValue) return false;
-  const parts = cookieValue.split(".");
-  if (parts.length !== 4) return false;
-  const [uid, sid, expStr, sig] = parts;
-  if (uid !== userId || sid !== sessionId) return false;
-  const exp = Number(expStr);
-  if (!Number.isFinite(exp) || exp * 1000 < Date.now()) return false;
-  const expected = createHmac("sha256", pepper())
-    .update(`${uid}.${sid}.${exp}`)
-    .digest("base64url");
-  try {
-    return timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
-  } catch {
-    return false;
-  }
 }
 
 export async function sendMfaChallengeEmail(to: string, code: string, purpose: MfaPurpose) {

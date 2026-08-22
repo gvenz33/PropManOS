@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { MFA_COOKIE } from "@/lib/auth/email-mfa";
+import { MFA_COOKIE } from "@/lib/auth/mfa-cookie";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -62,7 +62,7 @@ export async function verifyLoginMfaCode(formData: FormData): Promise<void> {
   }
 
   await markSessionMfaVerified(user.id, sessionId);
-  const cookie = createMfaCookieValue(user.id, sessionId);
+  const cookie = await createMfaCookieValue(user.id, sessionId);
   const jar = await cookies();
   jar.set(MFA_COOKIE, cookie.value, {
     httpOnly: true,
@@ -119,7 +119,7 @@ export async function confirmEnableEmailMfa(formData: FormData): Promise<void> {
   const sessionId = getAuthSessionId(session?.access_token);
   if (sessionId) {
     await markSessionMfaVerified(user.id, sessionId);
-    const cookie = createMfaCookieValue(user.id, sessionId);
+    const cookie = await createMfaCookieValue(user.id, sessionId);
     const jar = await cookies();
     jar.set(MFA_COOKIE, cookie.value, {
       httpOnly: true,

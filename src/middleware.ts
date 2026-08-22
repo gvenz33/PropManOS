@@ -4,7 +4,7 @@ import {
   isEmailMfaEnabled,
   MFA_COOKIE,
   verifyMfaCookieValue,
-} from "@/lib/auth/email-mfa";
+} from "@/lib/auth/mfa-cookie";
 import { profileRequiresEmailMfa } from "@/lib/auth/mfa-policy";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
       const sessionId = getAuthSessionId(session?.access_token);
       const cookieOk =
         sessionId &&
-        verifyMfaCookieValue(request.cookies.get(MFA_COOKIE)?.value, user.id, sessionId);
+        (await verifyMfaCookieValue(request.cookies.get(MFA_COOKIE)?.value, user.id, sessionId));
 
       if (!cookieOk) {
         const u = request.nextUrl.clone();

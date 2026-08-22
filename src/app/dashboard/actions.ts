@@ -1,6 +1,6 @@
 "use server";
 
-import { MFA_COOKIE } from "@/lib/auth/email-mfa";
+import { MFA_COOKIE } from "@/lib/auth/mfa-cookie";
 import { assertCanAddUnit } from "@/lib/billing/access";
 import { BRAND } from "@/lib/brand";
 import { formatUnitAddress, upsertTenantCrmContact } from "@/lib/crm";
