@@ -2,10 +2,12 @@ import { BRAND } from "@/lib/brand";
 import {
   getPlaidClient,
   isPlaidConfigured,
+  plaidCheckingAccountFilters,
   plaidCountryCodes,
-  plaidProducts,
+  plaidLinkProducts,
   type BankConnectionPurpose,
 } from "@/lib/plaid/client";
+import { plaidErrorMessage } from "@/lib/plaid/errors";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -13,7 +15,13 @@ type Body = { purpose?: BankConnectionPurpose };
 
 export async function POST(request: Request) {
   if (!isPlaidConfigured()) {
-    return NextResponse.json({ error: "Plaid is not configured" }, { status: 503 });
+    return NextResponse.json(
+      {
+        error:
+          "Plaid is not configured. Add PLAID_CLIENT_ID and PLAID_SECRET in Vercel environment variables.",
+      },
+      { status: 503 },
+    );
   }
 
   const supabase = await createClient();
@@ -41,10 +49,16 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (purpose === "payout" && profile?.role !== "owner") {
-    return NextResponse.json({ error: "Only landlords can connect payout accounts" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Only landlords can connect payout accounts" },
+      { status: 403 },
+    );
   }
   if (purpose === "payment" && profile?.role !== "tenant") {
-    return NextResponse.json({ error: "Only tenants can connect payment accounts" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Only tenants can connect payment accounts" },
+      { status: 403 },
+    );
   }
 
   try {
@@ -52,9 +66,10 @@ export async function POST(request: Request) {
     const linkToken = await plaid.linkTokenCreate({
       user: { client_user_id: user.id },
       client_name: BRAND.name,
-      products: plaidProducts(),
+      products: plaidLinkProducts(),
       country_codes: plaidCountryCodes(),
       language: "en",
+      account_filters: plaidCheckingAccountFilters(),
     });
 
     return NextResponse.json({
@@ -63,7 +78,9 @@ export async function POST(request: Request) {
       purpose,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not create link token";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: plaidErrorMessage(error, "Could not create link token") },
+      { status: 500 },
+    );
   }
 }

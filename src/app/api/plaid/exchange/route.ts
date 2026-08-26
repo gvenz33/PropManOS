@@ -1,12 +1,15 @@
 import {
   disconnectBankConnection,
+  getActiveBankConnectionWithToken,
   saveBankConnection,
 } from "@/lib/plaid/bank-connections";
 import {
   getPlaidClient,
   isPlaidConfigured,
+  plaidCountryCodes,
   type BankConnectionPurpose,
 } from "@/lib/plaid/client";
+import { plaidErrorMessage } from "@/lib/plaid/errors";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -61,22 +64,58 @@ export async function POST(request: Request) {
     const accessToken = exchange.data.access_token;
     const itemId = exchange.data.item_id;
 
+    // Prefer Auth metadata when available (mask / name from Plaid).
+    let institutionName = body.institution_name ?? null;
+    let accountName = body.account_name ?? null;
+    let accountMask = body.account_mask ?? null;
+    let accountSubtype = body.account_subtype ?? null;
+
+    try {
+      const auth = await plaid.authGet({ access_token: accessToken });
+      const matched = auth.data.accounts.find((account) => account.account_id === accountId);
+      if (matched) {
+        accountName = matched.name ?? accountName;
+        accountMask = matched.mask ?? accountMask;
+        accountSubtype = matched.subtype ?? accountSubtype;
+      }
+    } catch {
+      // Auth metadata is optional; Link metadata is enough to save the connection.
+    }
+
+    if (!institutionName) {
+      try {
+        const item = await plaid.itemGet({ access_token: accessToken });
+        const institutionId = item.data.item.institution_id;
+        if (institutionId) {
+          const institution = await plaid.institutionsGetById({
+            institution_id: institutionId,
+            country_codes: plaidCountryCodes(),
+          });
+          institutionName = institution.data.institution.name;
+        }
+      } catch {
+        // keep Link metadata
+      }
+    }
+
     const connection = await saveBankConnection({
       profileId: user.id,
       purpose,
       plaidItemId: itemId,
       plaidAccessToken: accessToken,
       plaidAccountId: accountId,
-      institutionName: body.institution_name,
-      accountName: body.account_name,
-      accountMask: body.account_mask,
-      accountSubtype: body.account_subtype,
+      institutionName,
+      accountName,
+      accountMask,
+      accountSubtype,
     });
 
     return NextResponse.json({ connection });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not connect bank";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: plaidErrorMessage(error, "Could not connect bank") },
+      { status: 500 },
+    );
   }
 }
 
@@ -102,10 +141,24 @@ export async function DELETE(request: Request) {
   }
 
   try {
+    if (isPlaidConfigured()) {
+      const existing = await getActiveBankConnectionWithToken(user.id, purpose);
+      if (existing?.plaid_access_token) {
+        try {
+          const plaid = getPlaidClient();
+          await plaid.itemRemove({ access_token: existing.plaid_access_token });
+        } catch {
+          // Still disconnect locally if Plaid revoke fails.
+        }
+      }
+    }
+
     await disconnectBankConnection(user.id, purpose);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not disconnect bank";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: plaidErrorMessage(error, "Could not disconnect bank") },
+      { status: 500 },
+    );
   }
 }

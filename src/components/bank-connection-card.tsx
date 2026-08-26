@@ -139,7 +139,9 @@ export function BankConnectionCard({
   if (!configured) {
     return (
       <p className="text-sm text-[var(--muted)]">
-        Bank linking is not enabled yet. Your landlord can still collect rent via Zelle or Cash App.
+        {purpose === "payout"
+          ? "Bank linking is not enabled yet. Add Plaid API keys in Vercel to connect a payout account."
+          : "Bank linking is not enabled yet. Your landlord can still collect rent via Zelle or Cash App."}
       </p>
     );
   }
