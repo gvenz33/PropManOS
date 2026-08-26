@@ -19,6 +19,7 @@ export default async function OwnerPaymentsPage() {
   const env = plaidStatus.env;
   const envMismatch =
     configured &&
+    !plaidStatus.secretLooksStripe &&
     ((env === "sandbox" && !plaidStatus.secretLooksSandbox && plaidStatus.secretPresent) ||
       (env === "production" && plaidStatus.secretLooksSandbox));
 
@@ -87,11 +88,26 @@ export default async function OwnerPaymentsPage() {
               </>
             ) : null}
           </p>
+          {plaidStatus.secretLooksStripe ? (
+            <p className="mt-2 text-amber-800">
+              Warning: <span className="font-mono">PLAID_SECRET</span> looks like a Stripe key
+              (<span className="font-mono">sk_live_</span> / <span className="font-mono">sk_test_</span>
+              ). Replace it with the Plaid secret from{" "}
+              <a
+                href="https://dashboard.plaid.com/developers/keys"
+                className="underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                dashboard.plaid.com/developers/keys
+              </a>
+              .
+            </p>
+          ) : null}
           {envMismatch ? (
             <p className="mt-2 text-amber-800">
               Warning: <span className="font-mono">PLAID_ENV={env}</span> may not match your secret
-              type. Sandbox secrets usually start with <span className="font-mono">sandbox-</span>.
-              Use the matching secret from the Plaid Dashboard for that environment.
+              type. Use the matching secret from the Plaid Dashboard for that environment.
             </p>
           ) : null}
           {env !== "production" ? (

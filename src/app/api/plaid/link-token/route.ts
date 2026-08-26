@@ -1,6 +1,7 @@
 import { BRAND } from "@/lib/brand";
 import {
   getPlaidClient,
+  getPlaidConfigProblem,
   isPlaidConfigured,
   plaidCountryCodes,
   type BankConnectionPurpose,
@@ -22,10 +23,12 @@ function isInvalidProduct(error: unknown) {
 }
 
 export async function POST(request: Request) {
-  if (!isPlaidConfigured()) {
+  const configProblem = getPlaidConfigProblem();
+  if (configProblem || !isPlaidConfigured()) {
     return NextResponse.json(
       {
         error:
+          configProblem ??
           "Plaid is not configured. Add PLAID_CLIENT_ID and PLAID_SECRET in Vercel environment variables.",
       },
       { status: 503 },
