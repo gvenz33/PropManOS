@@ -112,9 +112,11 @@ export default async function OwnerPaymentsPage() {
           ) : null}
           {env !== "production" ? (
             <p className="mt-2">
-              Testing tip: in sandbox use Plaid&apos;s test login{" "}
+              Testing tip: pick Plaid&apos;s sandbox bank (e.g. First Platypus Bank), login{" "}
               <span className="font-mono">user_good</span> /{" "}
-              <span className="font-mono">pass_good</span>.
+              <span className="font-mono">pass_good</span>. If asked for a phone, use{" "}
+              <span className="font-mono">415-555-0011</span> and OTP{" "}
+              <span className="font-mono">123456</span> — real numbers do not work in sandbox.
             </p>
           ) : null}
         </section>
