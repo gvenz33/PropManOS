@@ -1,16 +1,12 @@
 import {
   Configuration,
   CountryCode,
-  DepositoryAccountSubtype,
   PlaidApi,
   PlaidEnvironments,
   Products,
 } from "plaid";
 
 export type BankConnectionPurpose = "payout" | "payment";
-
-/** Link uses Auth so landlords/tenants can connect a checking account without Transfer approval. */
-const PLAID_LINK_PRODUCTS = [Products.Auth];
 
 export function isPlaidConfigured() {
   return Boolean(process.env.PLAID_CLIENT_ID?.trim() && process.env.PLAID_SECRET?.trim());
@@ -50,18 +46,11 @@ export function getPlaidClient() {
   );
 }
 
+/** Link products — Auth is preferred; link-token route may fall back to Transactions. */
 export function plaidLinkProducts() {
-  return PLAID_LINK_PRODUCTS;
+  return [Products.Auth];
 }
 
 export function plaidCountryCodes() {
   return [CountryCode.Us];
-}
-
-export function plaidCheckingAccountFilters() {
-  return {
-    depository: {
-      account_subtypes: [DepositoryAccountSubtype.Checking],
-    },
-  };
 }
