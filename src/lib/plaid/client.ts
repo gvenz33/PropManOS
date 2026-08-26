@@ -8,19 +8,40 @@ import {
 
 export type BankConnectionPurpose = "payout" | "payment";
 
+export function cleanPlaidEnvValue(value: string | undefined | null) {
+  return (value ?? "").trim().replace(/^["']|["']$/g, "").trim();
+}
+
 export function isPlaidConfigured() {
-  return Boolean(process.env.PLAID_CLIENT_ID?.trim() && process.env.PLAID_SECRET?.trim());
+  return Boolean(
+    cleanPlaidEnvValue(process.env.PLAID_CLIENT_ID) &&
+      cleanPlaidEnvValue(process.env.PLAID_SECRET),
+  );
 }
 
 export function getPlaidEnv() {
-  const env = (process.env.PLAID_ENV ?? "sandbox").toLowerCase();
+  const env = cleanPlaidEnvValue(process.env.PLAID_ENV || "sandbox").toLowerCase();
   if (env === "production" || env === "development" || env === "sandbox") return env;
   return "sandbox";
 }
 
+export function getPlaidConfigStatus() {
+  const clientId = cleanPlaidEnvValue(process.env.PLAID_CLIENT_ID);
+  const secret = cleanPlaidEnvValue(process.env.PLAID_SECRET);
+  const env = getPlaidEnv();
+  return {
+    configured: Boolean(clientId && secret),
+    env,
+    clientIdLast4: clientId ? clientId.slice(-4) : null,
+    secretPresent: Boolean(secret),
+    secretLooksSandbox: secret.startsWith("sandbox-") || secret.includes("sandbox"),
+    clientIdLooksSandbox: !clientId || clientId.length < 20 ? null : null,
+  };
+}
+
 export function getPlaidClient() {
-  const clientId = process.env.PLAID_CLIENT_ID?.trim();
-  const secret = process.env.PLAID_SECRET?.trim();
+  const clientId = cleanPlaidEnvValue(process.env.PLAID_CLIENT_ID);
+  const secret = cleanPlaidEnvValue(process.env.PLAID_SECRET);
   if (!clientId || !secret) {
     throw new Error("Plaid is not configured");
   }
