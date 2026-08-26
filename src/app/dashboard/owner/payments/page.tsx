@@ -1,7 +1,7 @@
 import { BankConnectionCard } from "@/components/bank-connection-card";
 import { getActiveBankConnection } from "@/lib/plaid/bank-connections";
 import { formatBankLabel } from "@/lib/plaid/format-bank-label";
-import { getPlaidEnv, isPlaidConfigured } from "@/lib/plaid/client";
+import { getPlaidConfigStatus } from "@/lib/plaid/client";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -13,9 +13,14 @@ export default async function OwnerPaymentsPage() {
   if (!user) redirect("/login");
 
   const connection = await getActiveBankConnection(user.id, "payout");
-  const configured = isPlaidConfigured();
+  const plaidStatus = getPlaidConfigStatus();
+  const configured = plaidStatus.configured;
   const connectedLabel = formatBankLabel(connection);
-  const env = getPlaidEnv();
+  const env = plaidStatus.env;
+  const envMismatch =
+    configured &&
+    ((env === "sandbox" && !plaidStatus.secretLooksSandbox && plaidStatus.secretPresent) ||
+      (env === "production" && plaidStatus.secretLooksSandbox));
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -65,7 +70,39 @@ export default async function OwnerPaymentsPage() {
         </ol>
       </section>
 
-      {!configured ? (
+      {configured ? (
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--muted-bg)] px-4 py-3 text-xs text-[var(--muted)]">
+          <p>
+            Plaid status:{" "}
+            <span className="font-medium text-[var(--foreground)]">keys loaded</span>
+            {" · "}
+            env <span className="font-mono text-[var(--foreground)]">{env}</span>
+            {plaidStatus.clientIdLast4 ? (
+              <>
+                {" · "}
+                client id …
+                <span className="font-mono text-[var(--foreground)]">
+                  {plaidStatus.clientIdLast4}
+                </span>
+              </>
+            ) : null}
+          </p>
+          {envMismatch ? (
+            <p className="mt-2 text-amber-800">
+              Warning: <span className="font-mono">PLAID_ENV={env}</span> may not match your secret
+              type. Sandbox secrets usually start with <span className="font-mono">sandbox-</span>.
+              Use the matching secret from the Plaid Dashboard for that environment.
+            </p>
+          ) : null}
+          {env !== "production" ? (
+            <p className="mt-2">
+              Testing tip: in sandbox use Plaid&apos;s test login{" "}
+              <span className="font-mono">user_good</span> /{" "}
+              <span className="font-mono">pass_good</span>.
+            </p>
+          ) : null}
+        </section>
+      ) : (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-950">
           <p className="font-semibold">Plaid keys required</p>
           <p className="mt-2">
@@ -89,12 +126,7 @@ export default async function OwnerPaymentsPage() {
             .
           </p>
         </section>
-      ) : env !== "production" ? (
-        <p className="text-xs text-[var(--muted)]">
-          Plaid is running in <span className="font-mono">{env}</span> mode. Use sandbox test
-          credentials from Plaid while testing.
-        </p>
-      ) : null}
+      )}
     </div>
   );
 }

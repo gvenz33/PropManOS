@@ -35,7 +35,6 @@ export function getPlaidConfigStatus() {
     clientIdLast4: clientId ? clientId.slice(-4) : null,
     secretPresent: Boolean(secret),
     secretLooksSandbox: secret.startsWith("sandbox-") || secret.includes("sandbox"),
-    clientIdLooksSandbox: !clientId || clientId.length < 20 ? null : null,
   };
 }
 
